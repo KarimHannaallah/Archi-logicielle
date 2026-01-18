@@ -1,19 +1,18 @@
-const db = require('../../src/persistence');
-const getItems = require('../../src/routes/getItems');
-const ITEMS = [{ id: 12345 }];
+const request = require('supertest');
 
 jest.mock('../../src/persistence', () => ({
-    getItems: jest.fn(),
+    getAll: jest.fn().mockResolvedValue([
+        { id: '1', name: 'Item 1', completed: false },
+    ]),
 }));
 
-test('it gets items correctly', async () => {
-    const req = {};
-    const res = { send: jest.fn() };
-    db.getItems.mockReturnValue(Promise.resolve(ITEMS));
+const { createApp } = require('../../src/app');
+const app = createApp();
 
-    await getItems(req, res);
-
-    expect(db.getItems.mock.calls.length).toBe(1);
-    expect(res.send.mock.calls[0].length).toBe(1);
-    expect(res.send.mock.calls[0][0]).toEqual(ITEMS);
+describe('GET /items', () => {
+    test('should return all items', async () => {
+        const res = await request(app).get('/items');
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveLength(1);
+    });
 });

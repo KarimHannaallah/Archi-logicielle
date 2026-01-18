@@ -1,6 +1,15 @@
-const db = require('../../src/persistence/sqlite');
 const fs = require('fs');
-const location = process.env.SQLITE_DB_LOCATION || '/etc/todos/todo.db';
+const path = require('path');
+const os = require('os');
+
+// Use a temp file for tests so we don't depend on /etc/todos/
+const testDbPath = path.join(
+    os.tmpdir(),
+    'todo-test-' + process.pid + '.db',
+);
+process.env.SQLITE_DB_LOCATION = testDbPath;
+
+const db = require('../../src/persistence/sqlite');
 
 const ITEM = {
     id: '7aef3d7c-d301-4846-8358-2a91ec9d6be3',
@@ -8,58 +17,90 @@ const ITEM = {
     completed: false,
 };
 
-beforeEach(() => {
-    if (fs.existsSync(location)) {
-        fs.unlinkSync(location);
+beforeEach(async () => {
+    try {
+        await db.teardown();
+    } catch (_e) {
+        // ignore – no connection open yet
+    }
+    if (fs.existsSync(testDbPath)) {
+        fs.unlinkSync(testDbPath);
     }
 });
 
-test('it initializes correctly', async () => {
-    await db.init();
+afterAll(async () => {
+    try {
+        await db.teardown();
+    } catch (_e) {
+        // ignore
+    }
+    if (fs.existsSync(testDbPath)) {
+        fs.unlinkSync(testDbPath);
+    }
 });
 
-test('it can store and retrieve items', async () => {
-    await db.init();
+describe('SQLite persistence (TodoRepository interface)', () => {
+    test('it initializes correctly', async () => {
+        await db.init();
+    });
 
-    await db.storeItem(ITEM);
+    test('it can store and retrieve items', async () => {
+        await db.init();
 
-    const items = await db.getItems();
-    expect(items.length).toBe(1);
-    expect(items[0]).toEqual(ITEM);
-});
+        await db.add(ITEM);
 
-test('it can update an existing item', async () => {
-    await db.init();
+        const items = await db.getAll();
+        expect(items.length).toBe(1);
+        expect(items[0]).toEqual(ITEM);
+    });
 
-    const initialItems = await db.getItems();
-    expect(initialItems.length).toBe(0);
+    test('it can update an existing item', async () => {
+        await db.init();
 
-    await db.storeItem(ITEM);
+        const initialItems = await db.getAll();
+        expect(initialItems.length).toBe(0);
 
-    await db.updateItem(
-        ITEM.id,
-        Object.assign({}, ITEM, { completed: !ITEM.completed }),
-    );
+        await db.add(ITEM);
 
-    const items = await db.getItems();
-    expect(items.length).toBe(1);
-    expect(items[0].completed).toBe(!ITEM.completed);
-});
+        await db.update(
+            ITEM.id,
+            Object.assign({}, ITEM, { completed: !ITEM.completed }),
+        );
 
-test('it can remove an existing item', async () => {
-    await db.init();
-    await db.storeItem(ITEM);
+        const items = await db.getAll();
+        expect(items.length).toBe(1);
+        expect(items[0].completed).toBe(!ITEM.completed);
+    });
 
-    await db.removeItem(ITEM.id);
+    test('it can remove an existing item', async () => {
+        await db.init();
+        await db.add(ITEM);
 
-    const items = await db.getItems();
-    expect(items.length).toBe(0);
-});
+        await db.remove(ITEM.id);
 
-test('it can get a single item', async () => {
-    await db.init();
-    await db.storeItem(ITEM);
+        const items = await db.getAll();
+        expect(items.length).toBe(0);
+    });
 
-    const item = await db.getItem(ITEM.id);
-    expect(item).toEqual(ITEM);
+    test('it can get a single item', async () => {
+        await db.init();
+        await db.add(ITEM);
+
+        const item = await db.getById(ITEM.id);
+        expect(item).toEqual(ITEM);
+    });
+
+    test('getById returns undefined for non-existent id', async () => {
+        await db.init();
+
+        const item = await db.getById('non-existent-id');
+        expect(item).toBeUndefined();
+    });
+
+    test('getAll returns empty array when no items', async () => {
+        await db.init();
+
+        const items = await db.getAll();
+        expect(items).toEqual([]);
+    });
 });

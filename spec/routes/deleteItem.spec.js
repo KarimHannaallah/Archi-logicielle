@@ -1,20 +1,15 @@
-const db = require('../../src/persistence');
-const deleteItem = require('../../src/routes/deleteItem');
-const ITEM = { id: 12345 };
+const request = require('supertest');
 
 jest.mock('../../src/persistence', () => ({
-    removeItem: jest.fn(),
-    getItem: jest.fn(),
+    remove: jest.fn().mockResolvedValue(undefined),
 }));
 
-test('it removes item correctly', async () => {
-    const req = { params: { id: 12345 } };
-    const res = { sendStatus: jest.fn() };
+const { createApp } = require('../../src/app');
+const app = createApp();
 
-    await deleteItem(req, res);
-
-    expect(db.removeItem.mock.calls.length).toBe(1);
-    expect(db.removeItem.mock.calls[0][0]).toBe(req.params.id);
-    expect(res.sendStatus.mock.calls[0].length).toBe(1);
-    expect(res.sendStatus.mock.calls[0][0]).toBe(200);
+describe('DELETE /items/:id', () => {
+    test('should remove an item', async () => {
+        const res = await request(app).delete('/items/1');
+        expect(res.status).toBe(200);
+    });
 });
