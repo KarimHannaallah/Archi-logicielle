@@ -1,14 +1,9 @@
-import { Request, Response } from 'express';
-import { v4 as uuid } from 'uuid';
+import type { Request, Response } from 'express';
+import type { TodoService } from '../domain/TodoService';
 
-export function makeAddItem(persistence: any) {
-    return async (req: Request, res: Response) => {
-        const item = {
-            id: uuid(),
-            name: req.body.name,
-            completed: false,
-        };
-        await persistence.add(item);
+export function makeAddItem(todoService: TodoService) {
+    return async (req: Request, res: Response): Promise<void> => {
+        const item = await todoService.createTodo(req.body.name);
         res.send(item);
     };
 }

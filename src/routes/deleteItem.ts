@@ -1,8 +1,9 @@
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
+import type { TodoService } from '../domain/TodoService';
 
-export function makeDeleteItem(persistence: any) {
-    return async (req: Request, res: Response) => {
-        await persistence.remove(req.params.id);
+export function makeDeleteItem(todoService: TodoService) {
+    return async (req: Request<{ id: string }>, res: Response): Promise<void> => {
+        await todoService.deleteTodo(req.params.id);
         res.sendStatus(200);
     };
 }

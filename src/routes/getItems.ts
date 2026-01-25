@@ -1,8 +1,9 @@
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
+import type { TodoService } from '../domain/TodoService';
 
-export function makeGetItems(persistence: any) {
-    return async (_req: Request, res: Response) => {
-        const items = await persistence.getAll();
+export function makeGetItems(todoService: TodoService) {
+    return async (_req: Request, res: Response): Promise<void> => {
+        const items = await todoService.listTodos();
         res.send(items);
     };
 }

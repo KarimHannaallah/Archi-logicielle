@@ -1,12 +1,14 @@
-import { Request, Response } from 'express';
+import type { Request, Response } from 'express';
+import type { TodoService } from '../domain/TodoService';
 
-export function makeUpdateItem(persistence: any) {
-    return async (req: Request, res: Response) => {
-        await persistence.update(req.params.id, {
-            name: req.body.name,
-            completed: req.body.completed,
-        });
-        const item = await persistence.getById(req.params.id);
+export function makeUpdateItem(todoService: TodoService) {
+    return async (req: Request<{ id: string }>, res: Response): Promise<void> => {
+        await todoService.updateTodo(
+            req.params.id,
+            req.body.name,
+            req.body.completed,
+        );
+        const item = await todoService.getTodo(req.params.id);
         res.send(item);
     };
 }
