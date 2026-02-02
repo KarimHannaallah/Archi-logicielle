@@ -1,16 +1,28 @@
-const request = require('supertest');
+const { makeUpdateItem } = require('../../src/routes/updateItem');
 
-jest.mock('../../src/persistence', () => ({
-    update: jest.fn().mockResolvedValue(undefined),
-    getById: jest.fn().mockResolvedValue({ id: '1', name: 'Test', completed: false }),
-}));
+const ITEM = { id: '1234', name: 'New title', completed: false };
 
-const { createApp } = require('../../src/app');
-const app = createApp();
+test('it updates items correctly', async () => {
+    const mockService = {
+        updateTodo: jest.fn().mockResolvedValue(undefined),
+        getTodo: jest.fn().mockResolvedValue(ITEM),
+    };
+    const updateItem = makeUpdateItem(mockService);
 
-describe('PUT /items/:id', () => {
-    test('should update an item', async () => {
-        const res = await request(app).put('/items/1').send({ name: 'Updated', completed: true });
-        expect(res.status).toBe(200);
-    });
+    const req = {
+        params: { id: '1234' },
+        body: { name: 'New title', completed: false },
+    };
+    const res = { send: jest.fn() };
+
+    await updateItem(req, res);
+
+    expect(mockService.updateTodo).toHaveBeenCalledTimes(1);
+    expect(mockService.updateTodo).toHaveBeenCalledWith('1234', 'New title', false);
+
+    expect(mockService.getTodo).toHaveBeenCalledTimes(1);
+    expect(mockService.getTodo).toHaveBeenCalledWith('1234');
+
+    expect(res.send).toHaveBeenCalledTimes(1);
+    expect(res.send).toHaveBeenCalledWith(ITEM);
 });

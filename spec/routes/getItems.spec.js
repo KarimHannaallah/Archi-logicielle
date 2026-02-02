@@ -1,18 +1,19 @@
-const request = require('supertest');
+const { makeGetItems } = require('../../src/routes/getItems');
 
-jest.mock('../../src/persistence', () => ({
-    getAll: jest.fn().mockResolvedValue([
-        { id: '1', name: 'Item 1', completed: false },
-    ]),
-}));
+const ITEMS = [{ id: 12345 }];
 
-const { createApp } = require('../../src/app');
-const app = createApp();
+test('it gets items correctly', async () => {
+    const mockService = {
+        listTodos: jest.fn().mockResolvedValue(ITEMS),
+    };
+    const getItems = makeGetItems(mockService);
 
-describe('GET /items', () => {
-    test('should return all items', async () => {
-        const res = await request(app).get('/items');
-        expect(res.status).toBe(200);
-        expect(res.body).toHaveLength(1);
-    });
+    const req = {};
+    const res = { send: jest.fn() };
+
+    await getItems(req, res);
+
+    expect(mockService.listTodos).toHaveBeenCalledTimes(1);
+    expect(res.send).toHaveBeenCalledTimes(1);
+    expect(res.send).toHaveBeenCalledWith(ITEMS);
 });

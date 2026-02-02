@@ -1,10 +1,12 @@
 const request = require('supertest');
-
-// En test on force InMemory
-process.env.USE_INMEMORY = 'true';
-
+const { InMemoryRepository } = require('../../src/persistence/inmemory');
+const { createTodoService } = require('../../src/domain/TodoService');
 const { createApp } = require('../../src/app');
-const app = createApp();
+
+// Le test construit son propre wiring — c'est ça la puissance de la DI
+const repo = new InMemoryRepository();
+const todoService = createTodoService(repo);
+const app = createApp(todoService);
 
 describe('Todo API — intégration', () => {
     let itemId;
@@ -30,7 +32,9 @@ describe('Todo API — intégration', () => {
     });
 
     test('PUT /items/:id updates an item', async () => {
-        await request(app).put(`/items/${itemId}`).send({ name: 'Buy milk', completed: true });
+        await request(app)
+            .put(`/items/${itemId}`)
+            .send({ name: 'Buy milk', completed: true });
         const res = await request(app).get('/items');
         expect(res.body[0].completed).toBe(true);
     });

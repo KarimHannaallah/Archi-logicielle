@@ -1,49 +1,31 @@
-import type { TodoItem } from '../domain/TodoItem';
+import { TodoRepository } from '../domain/TodoRepository';
+import { TodoItem } from '../domain/TodoItem';
 
-const store: Map<string, TodoItem> = new Map();
+export class InMemoryRepository implements TodoRepository {
+    private items: TodoItem[] = [];
 
-async function init(): Promise<void> {
-    store.clear();
-}
+    async init(): Promise<void> {}
 
-async function teardown(): Promise<void> {
-    store.clear();
-}
+    async getAll(): Promise<TodoItem[]> {
+        return [...this.items];
+    }
 
-async function getAll(): Promise<TodoItem[]> {
-    return Array.from(store.values());
-}
+    async getById(id: string): Promise<TodoItem | undefined> {
+        return this.items.find(item => item.id === id);
+    }
 
-async function getById(id: string): Promise<TodoItem | undefined> {
-    return store.get(id);
-}
+    async add(item: TodoItem): Promise<void> {
+        this.items.push({ ...item });
+    }
 
-async function add(item: TodoItem): Promise<void> {
-    store.set(item.id, { ...item });
-}
+    async update(id: string, data: Partial<TodoItem>): Promise<void> {
+        const item = this.items.find(i => i.id === id);
+        if (item) {
+            Object.assign(item, data);
+        }
+    }
 
-async function update(
-    id: string,
-    data: { name: string; completed: boolean },
-): Promise<void> {
-    const existing = store.get(id);
-    if (existing) {
-        store.set(id, { ...existing, name: data.name, completed: data.completed });
+    async remove(id: string): Promise<void> {
+        this.items = this.items.filter(item => item.id !== id);
     }
 }
-
-async function remove(id: string): Promise<void> {
-    store.delete(id);
-}
-
-const adapter = {
-    init,
-    teardown,
-    getAll,
-    getById,
-    add,
-    update,
-    remove,
-};
-
-export = adapter;

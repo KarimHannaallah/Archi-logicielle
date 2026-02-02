@@ -1,17 +1,19 @@
-const request = require('supertest');
+const { makeAddItem } = require('../../src/routes/addItem');
 
-// Version PRÉ-DI : on mock le module persistence directement
-jest.mock('../../src/persistence', () => ({
-    add: jest.fn().mockResolvedValue({ id: 'abc', name: 'Test', completed: false }),
-}));
+test('it stores item correctly', async () => {
+    const expectedItem = { id: 'some-uuid', name: 'A sample item', completed: false };
+    const mockService = {
+        createTodo: jest.fn().mockResolvedValue(expectedItem),
+    };
+    const addItem = makeAddItem(mockService);
 
-const { createApp } = require('../../src/app');
-const app = createApp();
+    const req = { body: { name: 'A sample item' } };
+    const res = { send: jest.fn() };
 
-describe('POST /items', () => {
-    test('should add a new item', async () => {
-        const res = await request(app).post('/items').send({ name: 'Test' });
-        expect(res.status).toBe(200);
-        expect(res.body.name).toBe('Test');
-    });
+    await addItem(req, res);
+
+    expect(mockService.createTodo).toHaveBeenCalledTimes(1);
+    expect(mockService.createTodo).toHaveBeenCalledWith('A sample item');
+    expect(res.send).toHaveBeenCalledTimes(1);
+    expect(res.send).toHaveBeenCalledWith(expectedItem);
 });
