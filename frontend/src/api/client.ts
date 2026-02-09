@@ -1,36 +1,49 @@
-const API_BASE = import.meta.env.VITE_API_URL || '';
+const API_BASE = '';
 
-async function request(path: string, options: RequestInit = {}) {
-    const res = await fetch(`${API_BASE}${path}`, {
-        ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            ...options.headers,
-        },
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    if (res.status === 204) return null;
+function getHeaders(): HeadersInit {
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    const token = localStorage.getItem('token');
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+}
+
+export async function apiGet<T>(path: string): Promise<T> {
+    const res = await fetch(`${API_BASE}${path}`, { headers: getHeaders() });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     return res.json();
 }
 
-export function getItems() {
-    return request('/items');
-}
-
-export function addItem(name: string) {
-    return request('/items', {
-        method: 'POST',
-        body: JSON.stringify({ name }),
+export async function apiPost<T>(path: string, body: unknown): Promise<T> {
+    const res = await fetch(`${API_BASE}${path}`, {
+        method: 'POST', headers: getHeaders(), body: JSON.stringify(body),
     });
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `${res.status} ${res.statusText}`);
+    }
+    return res.json();
 }
 
-export function updateItem(id: string, data: { name?: string; completed?: boolean }) {
-    return request(`/items/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(data),
+export async function apiPut<T>(path: string, body: unknown): Promise<T> {
+    const res = await fetch(`${API_BASE}${path}`, {
+        method: 'PUT', headers: getHeaders(), body: JSON.stringify(body),
     });
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `${res.status} ${res.statusText}`);
+    }
+    return res.json();
 }
 
-export function deleteItem(id: string) {
-    return request(`/items/${id}`, { method: 'DELETE' });
+export async function apiDelete<T>(path: string): Promise<T> {
+    const res = await fetch(`${API_BASE}${path}`, {
+        method: 'DELETE', headers: getHeaders(),
+    });
+    if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `${res.status} ${res.statusText}`);
+    }
+    return res.json();
 }
