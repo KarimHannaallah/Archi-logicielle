@@ -17,7 +17,7 @@ Application Todo fullstack avec authentification et conformite RGPD.
 ## Lancement rapide (Docker Compose)
 
 ```bash
-docker compose up --build
+docker compose up
 ```
 
 - Frontend : http://localhost
