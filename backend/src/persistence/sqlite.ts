@@ -45,12 +45,12 @@ async function getAll(userId: string): Promise<TodoItem[]> {
         db.all('SELECT * FROM todo_items WHERE user_id=?', [userId], (err: Error | null, rows: any[]) => {
             if (err) return rej(err);
             acc(
-                rows.map(item =>
-                    Object.assign({}, item, {
-                        completed: item.completed === 1,
-                        userId: item.user_id,
-                    }),
-                ),
+                rows.map(row => ({
+                    id: row.id,
+                    name: row.name,
+                    completed: row.completed === 1,
+                    userId: row.user_id,
+                })),
             );
         });
     });
@@ -61,12 +61,12 @@ async function getById(id: string, userId: string): Promise<TodoItem | undefined
         db.all('SELECT * FROM todo_items WHERE id=? AND user_id=?', [id, userId], (err: Error | null, rows: any[]) => {
             if (err) return rej(err);
             acc(
-                rows.map(item =>
-                    Object.assign({}, item, {
-                        completed: item.completed === 1,
-                        userId: item.user_id,
-                    }),
-                )[0],
+                rows.map(row => ({
+                    id: row.id,
+                    name: row.name,
+                    completed: row.completed === 1,
+                    userId: row.user_id,
+                }))[0],
             );
         });
     });

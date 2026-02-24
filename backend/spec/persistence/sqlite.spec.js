@@ -15,6 +15,7 @@ const ITEM = {
     id: '7aef3d7c-d301-4846-8358-2a91ec9d6be3',
     name: 'Test',
     completed: false,
+    userId: 'user-1',
 };
 
 beforeEach(async () => {
@@ -49,7 +50,7 @@ describe('SQLite persistence (TodoRepository interface)', () => {
 
         await db.add(ITEM);
 
-        const items = await db.getAll();
+        const items = await db.getAll('user-1');
         expect(items.length).toBe(1);
         expect(items[0]).toEqual(ITEM);
     });
@@ -57,17 +58,14 @@ describe('SQLite persistence (TodoRepository interface)', () => {
     test('it can update an existing item', async () => {
         await db.init();
 
-        const initialItems = await db.getAll();
+        const initialItems = await db.getAll('user-1');
         expect(initialItems.length).toBe(0);
 
         await db.add(ITEM);
 
-        await db.update(
-            ITEM.id,
-            Object.assign({}, ITEM, { completed: !ITEM.completed }),
-        );
+        await db.update(ITEM.id, 'user-1', { name: ITEM.name, completed: !ITEM.completed });
 
-        const items = await db.getAll();
+        const items = await db.getAll('user-1');
         expect(items.length).toBe(1);
         expect(items[0].completed).toBe(!ITEM.completed);
     });
@@ -76,9 +74,9 @@ describe('SQLite persistence (TodoRepository interface)', () => {
         await db.init();
         await db.add(ITEM);
 
-        await db.remove(ITEM.id);
+        await db.remove(ITEM.id, 'user-1');
 
-        const items = await db.getAll();
+        const items = await db.getAll('user-1');
         expect(items.length).toBe(0);
     });
 
@@ -86,21 +84,21 @@ describe('SQLite persistence (TodoRepository interface)', () => {
         await db.init();
         await db.add(ITEM);
 
-        const item = await db.getById(ITEM.id);
+        const item = await db.getById(ITEM.id, 'user-1');
         expect(item).toEqual(ITEM);
     });
 
     test('getById returns undefined for non-existent id', async () => {
         await db.init();
 
-        const item = await db.getById('non-existent-id');
+        const item = await db.getById('non-existent-id', 'user-1');
         expect(item).toBeUndefined();
     });
 
     test('getAll returns empty array when no items', async () => {
         await db.init();
 
-        const items = await db.getAll();
+        const items = await db.getAll('user-1');
         expect(items).toEqual([]);
     });
 });
