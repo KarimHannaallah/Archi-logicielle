@@ -22,7 +22,8 @@ export default function Profile() {
     }, []);
 
     const handleUpdate = async () => {
-        setError(''); setSuccess('');
+        setError('');
+        setSuccess('');
         try {
             const updated = await updateProfile({ name, email });
             setProfile(updated);
@@ -34,7 +35,9 @@ export default function Profile() {
     };
 
     const handleDelete = async () => {
-        if (!window.confirm('Are you sure you want to delete your account? This action is irreversible and will delete all your personal data (RGPD right to erasure).')) return;
+        if (!window.confirm('Are you sure you want to delete your account? This action is irreversible and will delete all your personal data (RGPD right to erasure).')) {
+            return;
+        }
         try {
             await deleteAccount();
             navigate('/login');
@@ -50,6 +53,7 @@ export default function Profile() {
             <h2 className="text-center mb-4">My Profile</h2>
             {error && <div className="alert alert-danger">{error}</div>}
             {success && <div className="alert alert-success">{success}</div>}
+
             {editing ? (
                 <>
                     <div className="mb-3">
@@ -83,6 +87,7 @@ export default function Profile() {
                     </div>
                 </>
             )}
+
             <div className="mt-4 p-3 bg-light rounded">
                 <h6>Your personal data (RGPD)</h6>
                 <small className="text-muted">

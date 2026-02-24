@@ -37,22 +37,46 @@ export default function Register() {
             <form onSubmit={handleSubmit}>
                 <div className="mb-3">
                     <label htmlFor="name" className="form-label">Name</label>
-                    <input type="text" className="form-control" id="name"
-                        value={name} onChange={e => setName(e.target.value)} required />
+                    <input
+                        type="text"
+                        className="form-control"
+                        id="name"
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        required
+                    />
                 </div>
                 <div className="mb-3">
                     <label htmlFor="email" className="form-label">Email</label>
-                    <input type="email" className="form-control" id="email"
-                        value={email} onChange={e => setEmail(e.target.value)} required />
+                    <input
+                        type="email"
+                        className="form-control"
+                        id="email"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        required
+                    />
                 </div>
                 <div className="mb-3">
                     <label htmlFor="password" className="form-label">Password</label>
-                    <input type="password" className="form-control" id="password"
-                        value={password} onChange={e => setPassword(e.target.value)} required minLength={6} />
+                    <input
+                        type="password"
+                        className="form-control"
+                        id="password"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        required
+                        minLength={6}
+                    />
                 </div>
                 <div className="mb-3 form-check">
-                    <input type="checkbox" className="form-check-input" id="consent"
-                        checked={consent} onChange={e => setConsent(e.target.checked)} />
+                    <input
+                        type="checkbox"
+                        className="form-check-input"
+                        id="consent"
+                        checked={consent}
+                        onChange={e => setConsent(e.target.checked)}
+                    />
                     <label className="form-check-label" htmlFor="consent">
                         I consent to the processing of my personal data (email, name) for the purpose
                         of using this application, in accordance with RGPD. I understand I can delete

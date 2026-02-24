@@ -9,10 +9,10 @@ const TEST_USER = {
 
 async function registerAndLogin(page: any) {
     await page.goto('/register');
-    await page.getByLabel('Name').fill(TEST_USER.name);
-    await page.getByLabel('Email').fill(TEST_USER.email);
-    await page.getByLabel('Password').fill(TEST_USER.password);
-    await page.getByLabel(/consent/i).check();
+    await page.getByRole('textbox', { name: 'Name' }).fill(TEST_USER.name);
+    await page.getByRole('textbox', { name: 'Email' }).fill(TEST_USER.email);
+    await page.locator('#password').fill(TEST_USER.password);
+    await page.getByRole('checkbox').check();
     await page.getByRole('button', { name: /register/i }).click();
     // Apres register, on est redirige vers la todo list
     await page.waitForURL('/');

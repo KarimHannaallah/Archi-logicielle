@@ -5,6 +5,7 @@ import type { AuthResponse, UserProfile } from '../types';
 interface AuthContextType {
     user: { id: string; email: string; name: string } | null;
     token: string | null;
+    loading: boolean;
     login: (email: string, password: string) => Promise<void>;
     register: (email: string, name: string, password: string, consent: boolean) => Promise<void>;
     logout: () => void;
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<{ id: string; email: string; name: string } | null>(null);
     const [token, setToken] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const savedToken = localStorage.getItem('token');
@@ -26,6 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setToken(savedToken);
             setUser(JSON.parse(savedUser));
         }
+        setLoading(false);
     }, []);
 
     const login = async (email: string, password: string) => {
@@ -67,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ user, token, login, register, logout, getProfile, updateProfile, deleteAccount }}>
+        <AuthContext.Provider value={{ user, token, loading, login, register, logout, getProfile, updateProfile, deleteAccount }}>
             {children}
         </AuthContext.Provider>
     );

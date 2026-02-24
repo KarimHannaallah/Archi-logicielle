@@ -1,0 +1,22 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      - SQLITE_DB_LOCATION=/data/todo.db
+      - JWT_SECRET=change-me-in-production
+      - CORS_ORIGIN=http://localhost
+      - PORT=3000
+    volumes:
+      - todo-data:/data
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  todo-data:

@@ -17,7 +17,9 @@ export async function apiGet<T>(path: string): Promise<T> {
 
 export async function apiPost<T>(path: string, body: unknown): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, {
-        method: 'POST', headers: getHeaders(), body: JSON.stringify(body),
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(body),
     });
     if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -28,7 +30,9 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
 
 export async function apiPut<T>(path: string, body: unknown): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`, {
-        method: 'PUT', headers: getHeaders(), body: JSON.stringify(body),
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(body),
     });
     if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -37,13 +41,13 @@ export async function apiPut<T>(path: string, body: unknown): Promise<T> {
     return res.json();
 }
 
-export async function apiDelete<T>(path: string): Promise<T> {
+export async function apiDelete(path: string): Promise<void> {
     const res = await fetch(`${API_BASE}${path}`, {
-        method: 'DELETE', headers: getHeaders(),
+        method: 'DELETE',
+        headers: getHeaders(),
     });
     if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || `${res.status} ${res.statusText}`);
     }
-    return res.json();
 }

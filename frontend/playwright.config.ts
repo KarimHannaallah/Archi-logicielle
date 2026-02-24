@@ -10,16 +10,11 @@ export default defineConfig({
     },
     webServer: [
         {
-            command: 'cd ../backend && USE_INMEMORY=true npx ts-node src/index.ts',
+            command: 'npx cross-env USE_INMEMORY=true NODE_ENV=test JWT_SECRET=test-secret CORS_ORIGIN=http://localhost:5173 npx ts-node src/index.ts',
+            cwd: '../backend',
             port: 3000,
             timeout: 15000,
             reuseExistingServer: false,
-            env: {
-                NODE_ENV: 'test',
-                USE_INMEMORY: 'true',
-                JWT_SECRET: 'test-secret',
-                CORS_ORIGIN: 'http://localhost:5173',
-            },
         },
         {
             command: 'npx vite --port 5173',

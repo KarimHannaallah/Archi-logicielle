@@ -7,7 +7,8 @@ import TodoListCard from './components/TodoListCard';
 import Navbar from './components/Navbar';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
-    const { token } = useAuth();
+    const { token, loading } = useAuth();
+    if (loading) return null;
     return token ? <>{children}</> : <Navigate to="/login" />;
 }
 
