@@ -11,10 +11,12 @@
     "lint": "eslint src/ spec/",
     "lint:fix": "eslint src/ spec/ --fix",
     "lint:arch": "depcruise --config .dependency-cruiser.cjs src/",
-    "start": "ts-node src/index.ts",
-    "test": "jest --testPathPattern=spec/",
     "dev": "nodemon -L --exec ts-node src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "start": "ts-node src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "start:prod": "node dist/index.js",
+    "test": "jest --testPathPattern=spec/"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -33,11 +35,7 @@
       "^.+\\.ts$": "ts-jest",
       "^.+\\.js$": "babel-jest"
     },
-    "moduleFileExtensions": [
-      "ts",
-      "js",
-      "json"
-    ]
+    "moduleFileExtensions": ["ts", "js", "json"]
   },
   "prettier": {
     "trailingComma": "all",
