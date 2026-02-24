@@ -19,6 +19,12 @@ Application Todo fullstack avec authentification et conformite RGPD.
 ```bash
 docker compose up
 ```
+## Pour Supprimer (Docker Compose)
+
+```bash
+docker compose down
+docker compose down -v
+```
 
 - Frontend : http://localhost
 - Backend API : http://localhost:3000
