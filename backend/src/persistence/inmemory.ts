@@ -10,12 +10,13 @@ async function teardown(): Promise<void> {
     store.clear();
 }
 
-async function getAll(): Promise<TodoItem[]> {
-    return Array.from(store.values());
+async function getAll(userId: string): Promise<TodoItem[]> {
+    return Array.from(store.values()).filter(item => item.userId === userId);
 }
 
-async function getById(id: string): Promise<TodoItem | undefined> {
-    return store.get(id);
+async function getById(id: string, userId: string): Promise<TodoItem | undefined> {
+    const item = store.get(id);
+    return item && item.userId === userId ? item : undefined;
 }
 
 async function add(item: TodoItem): Promise<void> {
@@ -24,16 +25,20 @@ async function add(item: TodoItem): Promise<void> {
 
 async function update(
     id: string,
+    userId: string,
     data: { name: string; completed: boolean },
 ): Promise<void> {
     const existing = store.get(id);
-    if (existing) {
+    if (existing && existing.userId === userId) {
         store.set(id, { ...existing, name: data.name, completed: data.completed });
     }
 }
 
-async function remove(id: string): Promise<void> {
-    store.delete(id);
+async function remove(id: string, userId: string): Promise<void> {
+    const existing = store.get(id);
+    if (existing && existing.userId === userId) {
+        store.delete(id);
+    }
 }
 
 const adapter = {

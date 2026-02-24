@@ -21,7 +21,7 @@ function init(): Promise<void> {
                 console.log(`Using sqlite database at ${location}`);
 
             db.run(
-                'CREATE TABLE IF NOT EXISTS todo_items (id varchar(36), name varchar(255), completed boolean)',
+                'CREATE TABLE IF NOT EXISTS todo_items (id varchar(36), name varchar(255), completed boolean, user_id varchar(36))',
                 (err: Error | null) => {
                     if (err) return rej(err);
                     acc();
@@ -40,14 +40,15 @@ async function teardown(): Promise<void> {
     });
 }
 
-async function getAll(): Promise<TodoItem[]> {
+async function getAll(userId: string): Promise<TodoItem[]> {
     return new Promise((acc, rej) => {
-        db.all('SELECT * FROM todo_items', (err: Error | null, rows: any[]) => {
+        db.all('SELECT * FROM todo_items WHERE user_id=?', [userId], (err: Error | null, rows: any[]) => {
             if (err) return rej(err);
             acc(
                 rows.map(item =>
                     Object.assign({}, item, {
                         completed: item.completed === 1,
+                        userId: item.user_id,
                     }),
                 ),
             );
@@ -55,14 +56,15 @@ async function getAll(): Promise<TodoItem[]> {
     });
 }
 
-async function getById(id: string): Promise<TodoItem | undefined> {
+async function getById(id: string, userId: string): Promise<TodoItem | undefined> {
     return new Promise((acc, rej) => {
-        db.all('SELECT * FROM todo_items WHERE id=?', [id], (err: Error | null, rows: any[]) => {
+        db.all('SELECT * FROM todo_items WHERE id=? AND user_id=?', [id, userId], (err: Error | null, rows: any[]) => {
             if (err) return rej(err);
             acc(
                 rows.map(item =>
                     Object.assign({}, item, {
                         completed: item.completed === 1,
+                        userId: item.user_id,
                     }),
                 )[0],
             );
@@ -73,8 +75,8 @@ async function getById(id: string): Promise<TodoItem | undefined> {
 async function add(item: TodoItem): Promise<void> {
     return new Promise((acc, rej) => {
         db.run(
-            'INSERT INTO todo_items (id, name, completed) VALUES (?, ?, ?)',
-            [item.id, item.name, item.completed ? 1 : 0],
+            'INSERT INTO todo_items (id, name, completed, user_id) VALUES (?, ?, ?, ?)',
+            [item.id, item.name, item.completed ? 1 : 0, item.userId],
             (err: Error | null) => {
                 if (err) return rej(err);
                 acc();
@@ -83,11 +85,11 @@ async function add(item: TodoItem): Promise<void> {
     });
 }
 
-async function update(id: string, data: { name: string; completed: boolean }): Promise<void> {
+async function update(id: string, userId: string, data: { name: string; completed: boolean }): Promise<void> {
     return new Promise((acc, rej) => {
         db.run(
-            'UPDATE todo_items SET name=?, completed=? WHERE id = ?',
-            [data.name, data.completed ? 1 : 0, id],
+            'UPDATE todo_items SET name=?, completed=? WHERE id=? AND user_id=?',
+            [data.name, data.completed ? 1 : 0, id, userId],
             (err: Error | null) => {
                 if (err) return rej(err);
                 acc();
@@ -96,9 +98,9 @@ async function update(id: string, data: { name: string; completed: boolean }): P
     });
 }
 
-async function remove(id: string): Promise<void> {
+async function remove(id: string, userId: string): Promise<void> {
     return new Promise((acc, rej) => {
-        db.run('DELETE FROM todo_items WHERE id = ?', [id], (err: Error | null) => {
+        db.run('DELETE FROM todo_items WHERE id=? AND user_id=?', [id, userId], (err: Error | null) => {
             if (err) return rej(err);
             acc();
         });

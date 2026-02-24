@@ -3,7 +3,8 @@ import type { TodoService } from '../domain/TodoService';
 
 export function makeAddItem(todoService: TodoService) {
     return async (req: Request, res: Response): Promise<void> => {
-        const item = await todoService.createTodo(req.body.name);
+        const userId = (req as any).userId;
+        const item = await todoService.createTodo(userId, req.body.name);
         res.send(item);
     };
 }

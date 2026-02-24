@@ -3,38 +3,38 @@ import type { TodoItem } from './TodoItem';
 import type { TodoRepository } from './TodoRepository';
 
 export interface TodoService {
-    createTodo(name: string): Promise<TodoItem>;
-    toggleTodo(id: string, completed: boolean): Promise<void>;
-    updateTodo(id: string, name: string, completed: boolean): Promise<void>;
-    deleteTodo(id: string): Promise<void>;
-    listTodos(): Promise<TodoItem[]>;
-    getTodo(id: string): Promise<TodoItem | undefined>;
+    createTodo(userId: string, name: string): Promise<TodoItem>;
+    toggleTodo(userId: string, id: string, completed: boolean): Promise<void>;
+    updateTodo(userId: string, id: string, name: string, completed: boolean): Promise<void>;
+    deleteTodo(userId: string, id: string): Promise<void>;
+    listTodos(userId: string): Promise<TodoItem[]>;
+    getTodo(userId: string, id: string): Promise<TodoItem | undefined>;
 }
 
 export function createTodoService(repository: TodoRepository): TodoService {
     return {
-        async createTodo(name: string): Promise<TodoItem> {
-            const item: TodoItem = { id: uuid(), name, completed: false };
+        async createTodo(userId: string, name: string): Promise<TodoItem> {
+            const item: TodoItem = { id: uuid(), name, completed: false, userId };
             await repository.add(item);
             return item;
         },
-        async toggleTodo(id: string, completed: boolean): Promise<void> {
-            const existing = await repository.getById(id);
+        async toggleTodo(userId: string, id: string, completed: boolean): Promise<void> {
+            const existing = await repository.getById(id, userId);
             if (existing) {
-                await repository.update(id, { name: existing.name, completed });
+                await repository.update(id, userId, { name: existing.name, completed });
             }
         },
-        async updateTodo(id: string, name: string, completed: boolean): Promise<void> {
-            await repository.update(id, { name, completed });
+        async updateTodo(userId: string, id: string, name: string, completed: boolean): Promise<void> {
+            await repository.update(id, userId, { name, completed });
         },
-        async deleteTodo(id: string): Promise<void> {
-            await repository.remove(id);
+        async deleteTodo(userId: string, id: string): Promise<void> {
+            await repository.remove(id, userId);
         },
-        async listTodos(): Promise<TodoItem[]> {
-            return repository.getAll();
+        async listTodos(userId: string): Promise<TodoItem[]> {
+            return repository.getAll(userId);
         },
-        async getTodo(id: string): Promise<TodoItem | undefined> {
-            return repository.getById(id);
+        async getTodo(userId: string, id: string): Promise<TodoItem | undefined> {
+            return repository.getById(id, userId);
         },
     };
 }
