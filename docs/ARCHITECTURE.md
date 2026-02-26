@@ -264,3 +264,186 @@ frontend/e2e/
 ```
 
 **Total : 67 tests backend (Jest) + 10 scenarios E2E (Playwright)**
+
+---
+
+## Architecture Microservices (Partie 2)
+
+### Vue d'ensemble
+
+La Todo App évolue vers une architecture **event-driven** composée de 3 microservices
+indépendants, chacun avec sa propre base de données SQLite, communiquant via Redis
+Pub/Sub (voir ADR-004).
+
+```mermaid
+graph TB
+    User["Utilisateur"]
+    FE["Frontend\n(React + Vite)"]
+    Nginx["Nginx\n(reverse proxy :80)"]
+
+    subgraph "Microservices"
+        TS["task-service\n:3001"]
+        PS["project-service\n:3002"]
+        NS["notification-service\n:3003"]
+    end
+
+    subgraph "Bases de données"
+        TDB[("SQLite\ntask.db")]
+        PDB[("SQLite\nproject.db")]
+        NDB[("SQLite\nnotification.db")]
+    end
+
+    Redis(["Redis\nPub/Sub\n:6379"])
+
+    User --> FE
+    FE --> Nginx
+    Nginx -->|"/tasks/*"| TS
+    Nginx -->|"/projects/*"| PS
+    Nginx -->|"/notifications/*"| NS
+
+    TS --- TDB
+    PS --- PDB
+    NS --- NDB
+
+    TS -->|"PUBLISH task.completed\nPUBLISH task.reopened"| Redis
+    Redis -->|"SUBSCRIBE task.*\nproject.*"| PS
+    Redis -->|"SUBSCRIBE task.*\nproject.*"| NS
+    PS -->|"PUBLISH project.closed"| Redis
+
+    style Redis fill:#dc382c,color:#fff
+    style TS fill:#e1f5fe
+    style PS fill:#e1f5fe
+    style NS fill:#e1f5fe
+    style Nginx fill:#009639,color:#fff
+```
+
+### Description des 3 Bounded Contexts
+
+**Task Service** — Source of truth des tâches. Expose un CRUD complet pour créer,
+lire, mettre à jour et supprimer des tâches. Chaque tâche est associée à un `projectId`
+(référence externe, sans connaissance du projet) et à un `userId`. Lorsqu'une tâche
+passe à `completed: true`, le service **publie** un événement `TaskCompleted` sur
+Redis. Lorsqu'elle repasse à `completed: false`, il publie `TaskReopened`. Ce service
+ne connaît pas l'existence du project-service ni du notification-service.
+
+**Project Service** — Source of truth des projets. Expose un CRUD complet pour gérer
+les projets. Il maintient en local une **projection** (`completedTasks` / `totalTasks`)
+mise à jour en écoutant les événements `TaskCompleted` et `TaskReopened` publiés par
+le task-service. Dès que `completedTasks === totalTasks` (et `totalTasks > 0`), le
+projet passe automatiquement à l'état `closed` et le service **publie** un événement
+`ProjectClosed` sur Redis. Ce service ne fait jamais d'appel HTTP vers le task-service.
+
+**Notification Service** — Consumer pur (worker pattern). N'expose aucun endpoint
+d'écriture. Il **écoute** les 3 événements (`TaskCompleted`, `TaskReopened`,
+`ProjectClosed`), les logue en console et les persiste dans sa propre base SQLite.
+Expose uniquement `GET /notifications` pour consulter l'historique des événements
+reçus. C'est un observateur passif du système, jamais un émetteur.
+
+---
+
+### Diagramme de séquence — "Complete task → Project auto-close → Notification"
+
+```mermaid
+sequenceDiagram
+    actor User as Utilisateur
+    participant FE as Frontend (React)
+    participant TS as task-service
+    participant Redis as Redis Pub/Sub
+    participant PS as project-service
+    participant NS as notification-service
+
+    User->>FE: Coche une tâche (completed)
+    FE->>TS: PATCH /tasks/:taskId { completed: true }
+    TS->>TS: Mettre à jour la tâche en DB
+    TS-->>FE: 200 OK { task }
+
+    TS->>Redis: PUBLISH task.completed { TaskCompleted event }
+
+    par Consumers parallèles
+        Redis-->>PS: TaskCompleted
+        PS->>PS: Incrémenter completedTasks
+        PS->>PS: completedTasks === totalTasks ?
+
+        alt Toutes les tâches sont terminées
+            PS->>PS: Passer projet à status = closed
+            PS->>Redis: PUBLISH project.closed { ProjectClosed event }
+            Redis-->>NS: ProjectClosed
+            NS->>NS: Persister en DB + log console
+        end
+
+    and
+        Redis-->>NS: TaskCompleted
+        NS->>NS: Persister en DB + log console
+    end
+
+    User->>FE: Consulte GET /notifications
+    FE->>NS: GET /notifications
+    NS-->>FE: [ TaskCompleted, ProjectClosed ]
+    FE-->>User: Affiche les notifications
+```
+
+---
+
+## Bounded Contexts (DDD)
+
+```mermaid
+graph TB
+    subgraph TC ["Task Context (task-service)"]
+        Task["Task\n─────────────\n• id: UUID\n• name: string\n• completed: boolean\n• projectId: UUID (ref)\n• userId: UUID (ref)"]
+    end
+
+    subgraph PC ["Project Context (project-service)"]
+        Project["Project\n─────────────\n• id: UUID\n• name: string\n• status: open | closed\n• userId: UUID (ref)\n• completedTasks: number\n• totalTasks: number"]
+    end
+
+    subgraph NC ["Notification Context (notification-service)"]
+        Notification["Notification\n─────────────\n• id: UUID\n• eventType: string\n• payload: JSON\n• receivedAt: datetime\n• userId: UUID (ref)"]
+        EventLog["Event Log\n─────────────\n(stockage persistant\ndes events reçus)"]
+        Notification --- EventLog
+    end
+
+    TCEvent1["TaskCompleted\n{ eventId, taskId,\nprojectId, userId }"]
+    TCEvent2["TaskReopened\n{ eventId, taskId,\nprojectId, userId }"]
+    PCEvent1["ProjectClosed\n{ eventId,\nprojectId, userId }"]
+
+    TC -->|publie| TCEvent1
+    TC -->|publie| TCEvent2
+    TCEvent1 -->|consommé par| PC
+    TCEvent2 -->|consommé par| PC
+    TCEvent1 -->|consommé par| NC
+    TCEvent2 -->|consommé par| NC
+    PC -->|publie| PCEvent1
+    PCEvent1 -->|consommé par| NC
+
+    style TC fill:#e3f2fd,stroke:#1565c0
+    style PC fill:#e8f5e9,stroke:#2e7d32
+    style NC fill:#fff3e0,stroke:#e65100
+    style TCEvent1 fill:#bbdefb
+    style TCEvent2 fill:#bbdefb
+    style PCEvent1 fill:#c8e6c9
+```
+
+### Concepts partagés entre les contextes
+
+| Concept | Task Context | Project Context | Notification Context |
+|---|---|---|---|
+| `projectId` | Référence externe (simple champ UUID) | Entité propre (aggregate root) | Donnée de contexte dans le payload |
+| `userId` | Référence (propriétaire de la tâche) | Référence (propriétaire du projet) | Référence (destinataire notifié) |
+| `taskId` | Entité propre (aggregate root) | Absent — projection locale uniquement | Donnée de contexte dans le payload |
+
+### Parallèle avec l'exemple Sales/Support du cours
+
+Dans le cours, `Customer` est un concept partagé entre les contextes Sales et Support :
+du côté Sales, c'est un **prospect à convertir** (avec pipeline, devis, contrats) ;
+du côté Support, c'est un **utilisateur avec des tickets** (avec historique, SLA).
+Le même `customerId` est une référence dans les deux cas, mais l'entité est modélisée
+différemment selon les besoins métier de chaque contexte.
+
+Ici, `projectId` joue exactement ce rôle. Dans le **Task Context**, c'est un simple
+champ UUID sur la tâche — une référence opaque vers un projet dont le task-service
+ne sait rien (pas de relation FK, pas de JOIN). Dans le **Project Context**, c'est
+l'identité de l'aggregate root `Project`, porteur d'un état (`status`), d'un nom,
+et d'une projection locale (`completedTasks / totalTasks`). Chaque contexte possède
+sa propre vision de `projectId`, cohérente avec ses responsabilités métier, et les
+événements (comme `TaskCompleted`) servent de **pont entre les contextes** sans jamais
+les coupler directement.
