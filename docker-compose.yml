@@ -1,22 +1,57 @@
 services:
-  backend:
-    build: ./backend
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  task-service:
+    build: ./services/task-service
     ports:
       - "3000:3000"
     environment:
-      - SQLITE_DB_LOCATION=/data/todo.db
+      - SQLITE_DB_LOCATION=/data/task.db
       - JWT_SECRET=change-me-in-production
       - CORS_ORIGIN=http://localhost
       - PORT=3000
+      - REDIS_HOST=redis
     volumes:
-      - todo-data:/data
+      - task-data:/data
+    depends_on:
+      - redis
+
+  project-service:
+    build: ./services/project-service
+    ports:
+      - "3002:3002"
+    environment:
+      - SQLITE_DB_LOCATION=/data/project.db
+      - JWT_SECRET=change-me-in-production
+      - PORT=3002
+      - REDIS_HOST=redis
+    volumes:
+      - project-data:/data
+    depends_on:
+      - redis
+
+  notification-service:
+    build: ./services/notification-service
+    ports:
+      - "3003:3003"
+    environment:
+      - REDIS_HOST=redis
+      - PORT=3003
+    depends_on:
+      - redis
 
   frontend:
     build: ./frontend
     ports:
       - "80:80"
     depends_on:
-      - backend
+      - task-service
+      - project-service
+      - notification-service
 
 volumes:
-  todo-data:
+  task-data:
+  project-data:
