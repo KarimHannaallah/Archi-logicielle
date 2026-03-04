@@ -1,0 +1,23 @@
+{
+  "name": "notification-service",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "dev": "nodemon -L --exec ts-node src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ioredis": "^5.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.3",
+    "nodemon": "^3.1.11",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
