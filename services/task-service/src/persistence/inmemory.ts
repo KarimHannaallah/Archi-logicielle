@@ -10,8 +10,12 @@ async function teardown(): Promise<void> {
     store.clear();
 }
 
-async function getAll(userId: string): Promise<TodoItem[]> {
-    return Array.from(store.values()).filter(item => item.userId === userId);
+async function getAll(userId: string, projectId?: string): Promise<TodoItem[]> {
+    let items = Array.from(store.values()).filter(item => item.userId === userId);
+    if (projectId) {
+        items = items.filter(item => item.projectId === projectId);
+    }
+    return items;
 }
 
 async function getById(id: string, userId: string): Promise<TodoItem | undefined> {

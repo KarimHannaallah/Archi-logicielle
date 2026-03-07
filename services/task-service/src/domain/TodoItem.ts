@@ -3,4 +3,5 @@ export interface TodoItem {
     name: string;
     completed: boolean;
     userId: string;
+    projectId: string;
 }
