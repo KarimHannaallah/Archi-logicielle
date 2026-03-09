@@ -8,7 +8,7 @@ test('it gets items correctly', async () => {
     };
     const getItems = makeGetItems(mockService);
 
-    const req = {};
+    const req = { userId: 'test-user' , query: {} };
     const res = { send: jest.fn() };
 
     await getItems(req, res);

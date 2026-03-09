@@ -3,6 +3,7 @@ import { createAuthService } from './domain/AuthService';
 import { createApp } from './app';
 import { createInMemoryUserRepository } from './persistence/userInmemory';
 import { createSqliteUserRepository } from './persistence/userSqlite';
+import { createEventPublisher } from './infra/eventBus';
 
 // --- Composition root : choix de l'adapter selon l'environnement ---
 function resolveAdapter() {
@@ -18,7 +19,8 @@ function resolveUserAdapter() {
 
 const adapter = resolveAdapter();
 const userAdapter = resolveUserAdapter();
-const todoService = createTodoService(adapter);
+const eventPublisher = createEventPublisher();
+const todoService = createTodoService(adapter, eventPublisher);
 const authService = createAuthService(userAdapter);
 const app = createApp(todoService, { authService, enableAuth: true });
 
@@ -39,4 +41,4 @@ const gracefulShutdown = () => {
 
 process.on('SIGINT', gracefulShutdown);
 process.on('SIGTERM', gracefulShutdown);
-process.on('SIGUSR2', gracefulShutdown); // Sent by nodemon
+process.on('SIGUSR2', gracefulShutdown);

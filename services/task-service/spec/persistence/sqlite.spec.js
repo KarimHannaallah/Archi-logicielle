@@ -16,6 +16,7 @@ const ITEM = {
     name: 'Test',
     completed: false,
     userId: 'user-1',
+    projectId: '',
 };
 
 beforeEach(async () => {

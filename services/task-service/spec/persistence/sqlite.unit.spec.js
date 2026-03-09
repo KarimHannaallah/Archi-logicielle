@@ -158,8 +158,8 @@ describe('sqlite persistence (unit with mocks)', () => {
             ],
         });
         await expect(sqlite.getAll('u')).resolves.toEqual([
-            { id: '1', name: 'A', completed: true, userId: 'u' },
-            { id: '2', name: 'B', completed: false, userId: 'u' },
+            { id: '1', name: 'A', completed: true, userId: 'u', projectId: '' },
+            { id: '2', name: 'B', completed: false, userId: 'u', projectId: '' },
         ]);
     });
 
@@ -179,6 +179,7 @@ describe('sqlite persistence (unit with mocks)', () => {
             name: 'X',
             completed: true,
             userId: 'u',
+            projectId: '',
         });
     });
 
@@ -199,11 +200,11 @@ describe('sqlite persistence (unit with mocks)', () => {
     test.each([
         [
             'add',
-            (s) => s.add({ id: '1', name: 'A', completed: true, userId: 'u' }),
+            (s) => s.add({ id: '1', name: 'A', completed: true, userId: 'u', projectId: '' }),
         ],
         [
             'update',
-            (s) => s.update('1', 'u', { name: 'A', completed: false }),
+            (s) => s.update('1', 'u', { name: 'A', completed: false, projectId: '' }),
         ],
         ['remove', (s) => s.remove('1', 'u')],
     ])('%s resolves on success', async (_name, call) => {
@@ -214,11 +215,11 @@ describe('sqlite persistence (unit with mocks)', () => {
     test.each([
         [
             'add',
-            (s) => s.add({ id: '1', name: 'A', completed: true, userId: 'u' }),
+            (s) => s.add({ id: '1', name: 'A', completed: true, userId: 'u', projectId: '' }),
         ],
         [
             'update',
-            (s) => s.update('1', 'u', { name: 'A', completed: false }),
+            (s) => s.update('1', 'u', { name: 'A', completed: false, projectId: '' }),
         ],
         ['remove', (s) => s.remove('1', 'u')],
     ])('%s rejects on db.run error', async (_name, call) => {
@@ -235,10 +236,10 @@ describe('sqlite persistence (unit with mocks)', () => {
         const sqlite = require('../../src/persistence/sqlite');
         await sqlite.init();
 
-        await sqlite.add({ id: '1', name: 'A', completed: true, userId: 'u' });
-        await sqlite.add({ id: '2', name: 'B', completed: false, userId: 'u' });
-        await sqlite.update('1', 'u', { name: 'A', completed: true });
-        await sqlite.update('2', 'u', { name: 'B', completed: false });
+        await sqlite.add({ id: '1', name: 'A', completed: true, userId: 'u', projectId: '' });
+        await sqlite.add({ id: '2', name: 'B', completed: false, userId: 'u', projectId: '' });
+        await sqlite.update('1', 'u', { name: 'A', completed: true, projectId: '' });
+        await sqlite.update('2', 'u', { name: 'B', completed: false, projectId: '' });
 
         // INSERT params: [id, name, completedFlag, userId]
         const insertCalls = dbObj.run.mock.calls.filter((c) =>

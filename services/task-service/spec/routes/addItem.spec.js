@@ -13,7 +13,7 @@ test('it stores item correctly', async () => {
     await addItem(req, res);
 
     expect(mockService.createTodo).toHaveBeenCalledTimes(1);
-    expect(mockService.createTodo).toHaveBeenCalledWith('test-user', 'A sample item');
+    expect(mockService.createTodo).toHaveBeenCalledWith('test-user', 'A sample item', undefined);
     expect(res.send).toHaveBeenCalledTimes(1);
     expect(res.send).toHaveBeenCalledWith(expectedItem);
 });
