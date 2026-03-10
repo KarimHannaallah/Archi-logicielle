@@ -2,6 +2,7 @@ export interface TodoItem {
     id: string;
     name: string;
     completed: boolean;
+    projectId?: string;
 }
 
 export interface UserProfile {
@@ -15,4 +16,14 @@ export interface UserProfile {
 export interface AuthResponse {
     token: string;
     user: { id: string; email: string; name: string };
+}
+
+export interface Project {
+    id: string;
+    name: string;
+    userId: string;
+    status: 'open' | 'closed';
+    totalTasks: number;
+    completedTasks: number;
+    createdAt: string;
 }

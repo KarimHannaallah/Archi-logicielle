@@ -51,3 +51,26 @@ export async function apiDelete(path: string): Promise<void> {
         throw new Error(data.error || `${res.status} ${res.statusText}`);
     }
 }
+
+// --- Projects API ---
+import type { Project, TodoItem } from '../types';
+
+export function getProjects(): Promise<Project[]> {
+    return apiGet<Project[]>('/projects');
+}
+
+export function getProject(id: string): Promise<Project> {
+    return apiGet<Project>(`/projects/${id}`);
+}
+
+export function createProject(name: string): Promise<Project> {
+    return apiPost<Project>('/projects', { name });
+}
+
+export function deleteProject(id: string): Promise<void> {
+    return apiDelete(`/projects/${id}`);
+}
+
+export function getTasksByProject(projectId: string): Promise<TodoItem[]> {
+    return apiGet<TodoItem[]>(`/items?projectId=${projectId}`);
+}

@@ -13,10 +13,11 @@ export default function Navbar() {
     return (
         <nav className="navbar navbar-expand navbar-dark bg-dark mb-4">
             <div className="container">
-                <Link className="navbar-brand" to="/">Todo App</Link>
+                <Link className="navbar-brand" to="/">Kanban App</Link>
                 <div className="navbar-nav ms-auto">
                     {user ? (
                         <>
+                            <Link className="nav-link" to="/">Projets</Link>
                             <Link className="nav-link" to="/profile">{user.name}</Link>
                             <button className="btn btn-outline-light btn-sm ms-2" onClick={handleLogout}>
                                 Logout

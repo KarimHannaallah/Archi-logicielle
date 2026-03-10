@@ -3,7 +3,8 @@ import { useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import Register from './components/Register';
 import Profile from './components/Profile';
-import TodoListCard from './components/TodoListCard';
+import ProjectList from './components/ProjectList';
+import ProjectDetail from './components/ProjectDetail';
 import Navbar from './components/Navbar';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -18,15 +19,18 @@ export default function App() {
             <Navbar />
             <div className="container">
                 <div className="row">
-                    <div className="col-md-6 offset-md-3">
+                    <div className="col-md-8 offset-md-2">
                         <Routes>
                             <Route path="/login" element={<Login />} />
                             <Route path="/register" element={<Register />} />
                             <Route path="/profile" element={
                                 <PrivateRoute><Profile /></PrivateRoute>
                             } />
+                            <Route path="/projects/:id" element={
+                                <PrivateRoute><ProjectDetail /></PrivateRoute>
+                            } />
                             <Route path="/" element={
-                                <PrivateRoute><TodoListCard /></PrivateRoute>
+                                <PrivateRoute><ProjectList /></PrivateRoute>
                             } />
                         </Routes>
                     </div>
