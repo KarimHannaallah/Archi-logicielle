@@ -2,25 +2,34 @@ import Redis from 'ioredis';
 import { v4 as uuid } from 'uuid';
 
 export function createSubscriber(host: string, port: number) {
-    return new Redis({
+    const sub = new Redis({
         host,
         port,
         lazyConnect: true,
         retryStrategy: (times: number) => Math.min(times * 200, 3000),
+        reconnectOnError: () => true,
     });
+    sub.on('error', (err) => {
+        console.error(`[${new Date().toISOString()}] [project-service] Redis subscriber error:`, err.message);
+    });
+    return sub;
 }
 
 export function createPublisher(host: string, port: number) {
-    const publisher = new Redis({
+    const pub = new Redis({
         host,
         port,
         lazyConnect: true,
         retryStrategy: (times: number) => Math.min(times * 200, 3000),
+        reconnectOnError: () => true,
     });
-    publisher.connect().catch(() => {
+    pub.connect().catch(() => {
         console.warn('[project-service] Redis publisher not available');
     });
-    return publisher;
+    pub.on('error', (err) => {
+        console.error(`[${new Date().toISOString()}] [project-service] Redis publisher error:`, err.message);
+    });
+    return pub;
 }
 
 export async function publishEvent(publisher: Redis, channel: string, payload: object): Promise<void> {
@@ -32,9 +41,9 @@ export async function publishEvent(publisher: Redis, channel: string, payload: o
             occurredAt: new Date().toISOString(),
             ...payload,
         };
-        await publisher.publish(channel, JSON.stringify(event));
-        console.log(`[project-service] PUBLISHED ${channel} | eventId=${event.eventId}`);
-    } catch (err) {
-        console.error(`[project-service] Failed to publish ${channel}:`, err);
+        const subscribers = await publisher.publish(channel, JSON.stringify(event));
+        console.log(`[${event.occurredAt}] PUBLISHED ${channel} | eventId=${event.eventId} | subscribers=${subscribers}`);
+    } catch (err: any) {
+        console.error(`[${new Date().toISOString()}] PUBLISH FAILED ${channel}:`, err.message);
     }
 }
