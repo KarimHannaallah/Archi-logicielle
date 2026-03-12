@@ -6,10 +6,15 @@ const publisher = new Redis({
     port: parseInt(process.env.REDIS_PORT || '6379', 10),
     lazyConnect: true,
     retryStrategy: (times: number) => Math.min(times * 200, 3000),
+    reconnectOnError: () => true,
 });
 
 publisher.connect().catch(() => {
     console.warn('[task-service] Redis not available — events will not be published');
+});
+
+publisher.on('error', (err) => {
+    console.error(`[${new Date().toISOString()}] [task-service] Redis error:`, err.message);
 });
 
 export interface EventPublisher {
@@ -27,10 +32,10 @@ export function createEventPublisher(): EventPublisher {
                     occurredAt: new Date().toISOString(),
                     ...payload,
                 };
-                await publisher.publish(channel, JSON.stringify(event));
-                console.log(`[task-service] PUBLISHED ${channel} | eventId=${event.eventId}`);
-            } catch (err) {
-                console.error(`[task-service] Failed to publish ${channel}:`, err);
+                const subscribers = await publisher.publish(channel, JSON.stringify(event));
+                console.log(`[${event.occurredAt}] PUBLISHED ${channel} | eventId=${event.eventId} | subscribers=${subscribers}`);
+            } catch (err: any) {
+                console.error(`[${new Date().toISOString()}] PUBLISH FAILED ${channel}:`, err.message);
             }
         },
     };
