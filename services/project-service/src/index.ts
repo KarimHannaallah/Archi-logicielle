@@ -22,7 +22,7 @@ const redisPort = parseInt(process.env.REDIS_PORT || '6379', 10);
 const subscriber = createSubscriber(redisHost, redisPort);
 const publisher = createPublisher(redisHost, redisPort);
 
-const CHANNELS = ['TaskCreated', 'TaskCompleted', 'TaskReopened'];
+const CHANNELS = ['TaskCreated', 'TaskCompleted', 'TaskReopened', 'TaskDeleted'];
 const processedEvents = new Set<string>();
 
 subscriber.connect()
@@ -56,15 +56,28 @@ subscriber.on('message', async (channel: string, message: string) => {
                 await repository.update(projectId, userId, { totalTasks: project.totalTasks + 1 });
                 console.log(`[project-service] totalTasks incremented for project ${projectId}`);
             }
-        } else if (channel === 'TaskCompleted') {
-            await projectService.incrementCompletedTasks(projectId, userId);
-            const project = await projectService.getProject(projectId, userId);
-            if (project && project.status === 'closed') {
-                await publishEvent(publisher, 'ProjectClosed', { projectId, userId });
+            } else if (channel === 'TaskCompleted') {
+                const before = await projectService.getProject(projectId, userId);
+                if (!before || before.status === 'closed') return; // déjà fermé, on skip
+                await projectService.incrementCompletedTasks(projectId, userId);
+                const after = await projectService.getProject(projectId, userId);
+                if (after && after.status === 'closed' && before.status === 'open') {
+                    await publishEvent(publisher, 'ProjectClosed', { projectId, userId });
+                }
+            } else if (channel === 'TaskReopened') {
+                await projectService.decrementCompletedTasks(projectId, userId);
+            } else if (channel === 'TaskDeleted') {
+                const project = await projectService.getProject(projectId, userId);
+                if (project) {
+                    const updates: any = { totalTasks: Math.max(0, project.totalTasks - 1) };
+                    if (event.wasCompleted) {
+                        updates.completedTasks = Math.max(0, project.completedTasks - 1);
+                    }
+                    await repository.update(projectId, userId, updates);
+                    console.log(`[project-service] Task deleted — totalTasks/completedTasks updated for project ${projectId}`);
+                }
             }
-        } else if (channel === 'TaskReopened') {
-            await projectService.decrementCompletedTasks(projectId, userId);
-        }
+
     } catch (err) {
         console.error(`[project-service] Error processing ${channel}:`, err);
     }

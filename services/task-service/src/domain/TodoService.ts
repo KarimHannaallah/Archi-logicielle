@@ -52,7 +52,15 @@ export function createTodoService(repository: TodoRepository, eventPublisher?: E
             }
         },
         async deleteTodo(userId: string, id: string): Promise<void> {
+            const existing = await repository.getById(id, userId);
             await repository.remove(id, userId);
+            if (existing && existing.projectId) {
+                if (existing.completed) {
+                    await publisher.publish('TaskDeleted', { taskId: id, projectId: existing.projectId, userId, wasCompleted: true });
+                } else {
+                    await publisher.publish('TaskDeleted', { taskId: id, projectId: existing.projectId, userId, wasCompleted: false });
+                }
+            }
         },
         async listTodos(userId: string, projectId?: string): Promise<TodoItem[]> {
             return repository.getAll(userId, projectId);
