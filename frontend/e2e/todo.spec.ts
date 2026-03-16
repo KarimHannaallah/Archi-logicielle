@@ -14,7 +14,6 @@ async function registerAndLogin(page: any) {
     await page.locator('#password').fill(TEST_USER.password);
     await page.getByRole('checkbox').check();
     await page.getByRole('button', { name: /register/i }).click();
-    // Apres register, on est redirige vers la todo list
     await page.waitForURL('/');
 }
 
@@ -24,126 +23,129 @@ test.beforeEach(async ({ page }) => {
     userCounter++;
     TEST_USER.email = `test-e2e-${Date.now()}-${userCounter}@example.com`;
     await registerAndLogin(page);
+
+    // Créer un projet pour les tests todo
+    await page.getByPlaceholder('Nom du projet').fill('Test Project');
+    await page.getByRole('button', { name: 'Créer' }).click();
+    await page.locator('text=Test Project').click();
+    await expect(page.locator('h3')).toHaveText('Test Project');
 });
 
 test.describe('Todo App — E2E', () => {
     test.describe('Page load', () => {
         test('shows the app with empty state message', async ({ page }) => {
-            await expect(page.locator('text=No items yet! Add one above!')).toBeVisible();
+            await expect(page.locator('text=Aucune tâche')).toBeVisible();
         });
 
         test('has an input field and an Add button', async ({ page }) => {
-            await expect(page.getByPlaceholder('New Item')).toBeVisible();
-            await expect(page.getByRole('button', { name: 'Add Item' })).toBeVisible();
+            await expect(page.getByPlaceholder('Nouvelle tâche')).toBeVisible();
+            await expect(page.getByRole('button', { name: 'Ajouter' })).toBeVisible();
         });
     });
 
     test.describe('Create a task', () => {
         test('adds a new item that appears in the list', async ({ page }) => {
-            await page.getByPlaceholder('New Item').fill('Buy groceries');
-            await page.getByRole('button', { name: 'Add Item' }).click();
+            await page.getByPlaceholder('Nouvelle tâche').fill('Buy groceries');
+            await page.getByRole('button', { name: 'Ajouter' }).click();
 
-            await expect(page.locator('text=Buy groceries')).toBeVisible();
-            await expect(page.locator('text=No items yet! Add one above!')).not.toBeVisible();
+            await expect(page.locator('text=Buy groceries')).toBeVisible({ timeout: 5000 });
         });
 
         test('input is cleared after adding', async ({ page }) => {
-            await page.getByPlaceholder('New Item').fill('Task 1');
-            await page.getByRole('button', { name: 'Add Item' }).click();
+            await page.getByPlaceholder('Nouvelle tâche').fill('Task 1');
+            await page.getByRole('button', { name: 'Ajouter' }).click();
 
-            await expect(page.locator('text=Task 1')).toBeVisible();
-            await expect(page.getByPlaceholder('New Item')).toHaveValue('');
+            await expect(page.locator('text=Task 1')).toBeVisible({ timeout: 5000 });
+            await expect(page.getByPlaceholder('Nouvelle tâche')).toHaveValue('');
         });
 
         test('can add multiple items', async ({ page }) => {
-            await page.getByPlaceholder('New Item').fill('Item A');
-            await page.getByRole('button', { name: 'Add Item' }).click();
-            await expect(page.locator('text=Item A')).toBeVisible();
+            await page.getByPlaceholder('Nouvelle tâche').fill('Item A');
+            await page.getByRole('button', { name: 'Ajouter' }).click();
+            await expect(page.locator('text=Item A')).toBeVisible({ timeout: 5000 });
 
-            await page.getByPlaceholder('New Item').fill('Item B');
-            await page.getByRole('button', { name: 'Add Item' }).click();
-            await expect(page.locator('text=Item B')).toBeVisible();
+            await page.getByPlaceholder('Nouvelle tâche').fill('Item B');
+            await page.getByRole('button', { name: 'Ajouter' }).click();
+            await expect(page.locator('text=Item B')).toBeVisible({ timeout: 5000 });
         });
     });
 
     test.describe('Toggle (check/uncheck) a task', () => {
         test('marks an item as completed and back', async ({ page }) => {
-            await page.getByPlaceholder('New Item').fill('Toggle me');
-            await page.getByRole('button', { name: 'Add Item' }).click();
-            await expect(page.locator('text=Toggle me')).toBeVisible();
+            await page.getByPlaceholder('Nouvelle tâche').fill('Toggle me');
+            await page.getByRole('button', { name: 'Ajouter' }).click();
+            await expect(page.locator('text=Toggle me')).toBeVisible({ timeout: 5000 });
 
             // Complete it
-            const completeBtn = page.getByRole('button', { name: /complete/i }).first();
-            await completeBtn.click();
+            await page.getByRole('button', { name: 'Terminer' }).click();
 
-            // Verify completed state exists
-            const incompleteBtn = page.getByRole('button', { name: /incomplete/i }).first();
-            await expect(incompleteBtn).toBeVisible();
+            // Verify it moved to "Terminées" column
+            await expect(page.getByRole('button', { name: 'Réouvrir' })).toBeVisible({ timeout: 5000 });
 
             // Uncomplete it
-            await incompleteBtn.click();
-            await expect(page.getByRole('button', { name: /complete/i }).first()).toBeVisible();
+            await page.getByRole('button', { name: 'Réouvrir' }).click();
+            await expect(page.getByRole('button', { name: 'Terminer' })).toBeVisible({ timeout: 5000 });
         });
     });
 
     test.describe('Delete a task', () => {
         test('removes an item from the list', async ({ page }) => {
-            await page.getByPlaceholder('New Item').fill('Delete me');
-            await page.getByRole('button', { name: 'Add Item' }).click();
-            await expect(page.locator('text=Delete me')).toBeVisible();
+            await page.getByPlaceholder('Nouvelle tâche').fill('Delete me');
+            await page.getByRole('button', { name: 'Ajouter' }).click();
+            await expect(page.locator('text=Delete me')).toBeVisible({ timeout: 5000 });
 
-            await page.getByRole('button', { name: /remove/i }).first().click();
+            await page.getByRole('button', { name: 'Supprimer' }).click();
 
-            await expect(page.locator('text=Delete me')).not.toBeVisible();
-            await expect(page.locator('text=No items yet! Add one above!')).toBeVisible();
+            await expect(page.locator('text=Delete me')).not.toBeVisible({ timeout: 5000 });
+            await expect(page.locator('text=Aucune tâche')).toBeVisible();
         });
 
         test('deleting one item does not affect others', async ({ page }) => {
-            await page.getByPlaceholder('New Item').fill('Keep me');
-            await page.getByRole('button', { name: 'Add Item' }).click();
+            await page.getByPlaceholder('Nouvelle tâche').fill('Keep me');
+            await page.getByRole('button', { name: 'Ajouter' }).click();
+            await expect(page.locator('text=Keep me')).toBeVisible({ timeout: 5000 });
+
+            await page.getByPlaceholder('Nouvelle tâche').fill('Remove me');
+            await page.getByRole('button', { name: 'Ajouter' }).click();
+            await expect(page.locator('text=Remove me')).toBeVisible({ timeout: 5000 });
+
+            // Delete "Remove me" via its card
+            const removeCard = page.locator('.card', { hasText: 'Remove me' });
+            await removeCard.getByRole('button', { name: 'Supprimer' }).click();
+
             await expect(page.locator('text=Keep me')).toBeVisible();
-
-            await page.getByPlaceholder('New Item').fill('Remove me');
-            await page.getByRole('button', { name: 'Add Item' }).click();
-            await expect(page.locator('text=Remove me')).toBeVisible();
-
-            // Delete "Remove me" via its row
-            const removeRow = page.locator('.item, [class*=item]', { hasText: 'Remove me' });
-            await removeRow.getByRole('button', { name: /remove/i }).click();
-
-            await expect(page.locator('text=Keep me')).toBeVisible();
-            await expect(page.locator('text=Remove me')).not.toBeVisible();
+            await expect(page.locator('text=Remove me')).not.toBeVisible({ timeout: 5000 });
         });
     });
 
     test.describe('Full workflow', () => {
         test('create → check → uncheck → delete', async ({ page }) => {
             // Create
-            await page.getByPlaceholder('New Item').fill('Full cycle task');
-            await page.getByRole('button', { name: 'Add Item' }).click();
-            await expect(page.locator('text=Full cycle task')).toBeVisible();
+            await page.getByPlaceholder('Nouvelle tâche').fill('Full cycle task');
+            await page.getByRole('button', { name: 'Ajouter' }).click();
+            await expect(page.locator('text=Full cycle task')).toBeVisible({ timeout: 5000 });
 
             // Check
-            await page.getByRole('button', { name: /complete/i }).first().click();
-            await expect(page.getByRole('button', { name: /incomplete/i }).first()).toBeVisible();
+            await page.getByRole('button', { name: 'Terminer' }).click();
+            await expect(page.getByRole('button', { name: 'Réouvrir' })).toBeVisible({ timeout: 5000 });
 
             // Uncheck
-            await page.getByRole('button', { name: /incomplete/i }).first().click();
-            await expect(page.getByRole('button', { name: /complete/i }).first()).toBeVisible();
+            await page.getByRole('button', { name: 'Réouvrir' }).click();
+            await expect(page.getByRole('button', { name: 'Terminer' })).toBeVisible({ timeout: 5000 });
 
             // Delete
-            await page.getByRole('button', { name: /remove/i }).first().click();
-            await expect(page.locator('text=No items yet! Add one above!')).toBeVisible();
+            await page.getByRole('button', { name: 'Supprimer' }).click();
+            await expect(page.locator('text=Aucune tâche')).toBeVisible({ timeout: 5000 });
         });
 
         test('data persists across page reloads', async ({ page }) => {
-            await page.getByPlaceholder('New Item').fill('Persistent item');
-            await page.getByRole('button', { name: 'Add Item' }).click();
-            await expect(page.locator('text=Persistent item')).toBeVisible();
+            await page.getByPlaceholder('Nouvelle tâche').fill('Persistent item');
+            await page.getByRole('button', { name: 'Ajouter' }).click();
+            await expect(page.locator('text=Persistent item')).toBeVisible({ timeout: 5000 });
 
             await page.reload();
 
-            await expect(page.locator('text=Persistent item')).toBeVisible();
+            await expect(page.locator('text=Persistent item')).toBeVisible({ timeout: 5000 });
         });
     });
 });
