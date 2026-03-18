@@ -1,166 +1,112 @@
-# Todo App
+# Kanban App — Microservices Event-Driven
 
-Application Todo fullstack avec authentification et conformite RGPD.
-
-- **Frontend** : React 19 + Vite + TypeScript
-- **Backend** : Express 4 + TypeScript (architecture Ports & Adapters)
-- **Persistance** : SQLite (defaut), MySQL, ou InMemory
-- **Auth** : JWT + scrypt password hashing
-- **RGPD** : minimisation des donnees, consentement, droit a l'effacement
-
-## Prerequis
-
-- **Node.js >= 24** (voir `.nvmrc`)
-- npm
-- Docker & Docker Compose (pour le lancement en 1 commande)
-
-## Lancement rapide (Docker Compose)
-
-```bash
-docker compose up
-```
-## Pour Supprimer (Docker Compose)
-
-```bash
-docker compose down
-docker compose down -v
-```
-
-- Frontend : http://localhost
-- Backend API : http://localhost:3000
-
-## Developpement local
-
-### Backend
-
-```bash
-cd backend
-npm install
-npm run dev          # nodemon sur le port 3000
-npm test             # 67 tests (unit + integration + auth)
-npm run typecheck    # verification TypeScript
-npm run lint         # ESLint
-npm run lint:arch    # dependency-cruiser (regles architecture)
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev          # Vite dev server sur le port 5173 (proxy vers backend)
-npm run build        # Build de production
-npm run test:e2e     # tests end-to-end (Playwright)
-```
+Application collaborative de gestion de projets kanban, construite en microservices avec communication par événements.
 
 ## Architecture
 
-```
-/
-├── docker-compose.yml          # Lancement 1 commande
-├── docs/
-│   ├── AUDIT.md                # Audit d'architecture initial
-│   └── RGPD.md                 # Documentation RGPD
-├── backend/
-│   ├── Dockerfile
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── src/
-│       ├── index.ts             # Composition root
-│       ├── app.ts               # Factory Express (routes + auth)
-│       ├── domain/              # Couche metier (interfaces pures)
-│       │   ├── TodoItem.ts
-│       │   ├── TodoRepository.ts
-│       │   ├── TodoService.ts
-│       │   ├── User.ts
-│       │   ├── UserRepository.ts
-│       │   └── AuthService.ts
-│       ├── persistence/          # Adapters (implementations)
-│       │   ├── inmemory.ts
-│       │   ├── sqlite.ts
-│       │   ├── mysql.ts
-│       │   ├── userInmemory.ts
-│       │   └── userSqlite.ts
-│       ├── routes/               # Handlers HTTP (factories)
-│       │   ├── addItem.ts
-│       │   ├── getItems.ts
-│       │   ├── updateItem.ts
-│       │   ├── deleteItem.ts
-│       │   └── auth.ts
-│       └── middleware/
-│           └── auth.ts            # JWT verification middleware
-│   └── spec/                    # Tests (Jest)
-│       ├── integration/
-│       │   ├── api.spec.js        # Tests CRUD complets
-│       │   └── auth.spec.js       # Tests authentification
-│       ├── routes/               # Tests unitaires des handlers
-│       └── persistence/          # Tests des adapters
-└── frontend/
-    ├── Dockerfile
-    ├── nginx.conf               # Reverse proxy vers backend
-    ├── package.json
-    ├── vite.config.ts
-    └── src/
-        ├── main.tsx
-        ├── App.tsx
-        ├── components/           # Composants React
-        │   ├── Navbar.tsx
-        │   ├── Login.tsx
-        │   ├── Register.tsx
-        │   ├── Profile.tsx
-        │   ├── TodoListCard.tsx
-        │   ├── AddItemForm.tsx
-        │   └── ItemDisplay.tsx
-        ├── context/
-        │   └── AuthContext.tsx     # Etat d'authentification
-        ├── api/
-        │   └── client.ts          # Client HTTP avec token JWT
-        └── types/
-            └── index.ts
+- **Frontend** : React 19 + Vite + TypeScript
+- **Task Service** : Express + TypeScript (Ports & Adapters) — CRUD tâches, publie TaskCompleted/TaskReopened
+- **Project Service** : Express + TypeScript (Ports & Adapters) — CRUD projets, auto-close via projection locale
+- **Notification Service** : Express + TypeScript — consumer Redis, stocke et expose les notifications
+- **Broker** : Redis 7 Pub/Sub
+- **Persistence** : SQLite (défaut) ou InMemory
+- **Auth** : JWT + scrypt
+- **RGPD** : minimisation des données, consentement, droit à l'effacement
+
+## Prérequis
+
+- Docker & Docker Compose
+- Node.js >= 24 (pour le développement)
+
+## Lancement (Docker Compose)
+```bash
+docker compose up --build
 ```
 
-### Principes d'architecture (Ports & Adapters)
+- Frontend : http://localhost
+- Task Service : http://localhost:3000
+- Project Service : http://localhost:3002
+- Notification Service : http://localhost:3003
 
-- **Domain** : interfaces pures (`TodoRepository`, `UserRepository`, `TodoService`, `AuthService`), aucune dependance infra
-- **Persistence** : adapters interchangeables (InMemory, SQLite, MySQL)
-- **Routes** : factories recevant les services par injection
-- **Middleware** : auth JWT separee du metier
-- **Regles enforcees** par `dependency-cruiser` :
-  - Domain -> pas d'infrastructure
-  - Routes -> pas de persistence directe
-  - Pas de dependances circulaires
+## Lancement en développement
+```bash
+# Terminal 1 — Redis
+docker run --rm -p 6379:6379 redis:7-alpine
 
-### Variables d'environnement
+# Terminal 2 — Task Service
+cd services/task-service
+USE_INMEMORY=true REDIS_HOST=localhost JWT_SECRET=change-me npm run dev
 
-| Variable | Defaut | Description |
-|---|---|---|
-| `PORT` | `3000` | Port du backend |
-| `JWT_SECRET` | `dev-secret-...` | Secret JWT (changer en production !) |
-| `SQLITE_DB_LOCATION` | `/etc/todos/todo.db` | Chemin de la base SQLite |
-| `CORS_ORIGIN` | `http://localhost:5173` | Origine autorisee CORS |
-| `USE_INMEMORY` | `false` | Utiliser la persistence en memoire |
-| `MYSQL_HOST` | - | Active l'adapter MySQL |
+# Terminal 3 — Project Service
+cd services/project-service
+USE_INMEMORY=true REDIS_HOST=localhost JWT_SECRET=change-me npx ts-node src/index.ts
+
+# Terminal 4 — Notification Service
+cd services/notification-service
+REDIS_HOST=localhost JWT_SECRET=change-me npx ts-node src/index.ts
+
+# Terminal 5 — Frontend
+cd frontend
+npm run dev
+```
 
 ## Tests
-
 ```bash
-cd backend && npm test
+# Tests unitaires + intégration (par service)
+cd services/task-service && npm test
+cd services/project-service && npm test
+
+# Tests E2E (lance automatiquement Redis + 3 services + Vite)
+cd frontend && npx playwright test
 ```
 
-**67 tests** couvrant :
-- Tests unitaires des routes (mocks)
-- Tests unitaires de la persistence (InMemory, SQLite, SQLite avec mocks)
-- Tests d'integration API (CRUD complet)
-- Tests d'authentification (register, login, profil, suppression)
-- Tests de non-regression (isolation infrastructure)
+## Structure du monorepo
+```
+├── frontend/                     React + Vite
+│   ├── src/components/           Composants (ProjectList, ProjectDetail, NotificationPanel...)
+│   ├── e2e/                      Tests Playwright (todo.spec.ts, project-workflow.spec.ts)
+│   └── playwright.config.ts      Config avec 5 webServers auto
+├── services/
+│   ├── task-service/             Express — CRUD tâches + events publisher
+│   │   ├── src/domain/           TodoItem, TodoRepository, TodoService
+│   │   ├── src/infra/            EventBus (Redis publisher)
+│   │   └── spec/                 68 tests Jest
+│   ├── project-service/          Express — CRUD projets + events subscriber
+│   │   ├── src/domain/           Project, ProjectRepository, ProjectService
+│   │   ├── src/infra/            EventBus (Redis subscriber + publisher)
+│   │   └── spec/                 14+ tests Jest
+│   └── notification-service/     Express + Redis subscriber
+│       ├── src/domain/           Notification
+│       ├── src/store/            In-memory notification store
+│       └── src/routes/           GET /notifications
+├── docs/
+│   ├── ARCHITECTURE.md           Diagrammes + bounded contexts + séquences
+│   ├── AUDIT.md                  Audit initial (11 problèmes identifiés)
+│   ├── RGPD.md                   Conformité RGPD
+│   ├── adr/                      5 ADR (Ports&Adapters, Front/Back, DI, Broker, Event-Driven)
+│   └── events/                   JSON Schema des événements
+└── docker-compose.yml            5 containers (frontend, task, project, notification, redis)
+```
 
-## Conformite RGPD
+## Variables d'environnement
 
-Voir [docs/RGPD.md](docs/RGPD.md) pour la documentation complete.
+| Variable | Service | Défaut | Description |
+|----------|---------|--------|-------------|
+| PORT | tous | 3000/3002/3003 | Port d'écoute |
+| REDIS_HOST | tous | localhost | Hôte Redis |
+| REDIS_PORT | tous | 6379 | Port Redis |
+| JWT_SECRET | tous | change-me-in-production | Secret JWT partagé |
+| USE_INMEMORY | task, project | false | Utiliser InMemory au lieu de SQLite |
+| SQLITE_DB_LOCATION | task, project | /data/*.db | Chemin de la base SQLite |
+| CORS_ORIGIN | task | http://localhost:5173 | Origine autorisée CORS |
 
-- **Minimisation** : seules les donnees necessaires sont collectees (email, nom, hash du mot de passe)
-- **Consentement** : case a cocher obligatoire lors de l'inscription
-- **Droit d'acces** : page profil affichant toutes les donnees personnelles
-- **Droit de rectification** : modification du nom et de l'email
-- **Droit a l'effacement** : suppression du compte et de toutes les donnees associees
-- **Securite** : mots de passe hashes avec scrypt, tokens JWT avec expiration
+## Documentation
+
+- [Architecture](docs/ARCHITECTURE.md) — Diagrammes, bounded contexts, séquences
+- [Audit initial](docs/AUDIT.md) — 11 problèmes identifiés dans le monolithe
+- [RGPD](docs/RGPD.md) — Conformité données personnelles
+- [ADR-001](docs/adr/ADR-001-ports-and-adapters.md) — Choix Ports & Adapters
+- [ADR-002](docs/adr/ADR-002-separation-frontend-backend.md) — Séparation Front/Back
+- [ADR-003](docs/adr/ADR-003-injection-composition-root.md) — Injection via Composition Root
+- [ADR-004](docs/adr/ADR-004-choix-message-brocker.md) — Redis Pub/Sub comme broker
+- [ADR-005](docs/adr/ADR-005-event-driven-architecture.md) — Architecture Event-Driven
