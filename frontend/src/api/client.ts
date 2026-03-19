@@ -1,3 +1,5 @@
+import type { Notification } from '../types';
+
 const API_BASE = '';
 
 function getHeaders(): HeadersInit {
@@ -73,4 +75,12 @@ export function deleteProject(id: string): Promise<void> {
 
 export function getTasksByProject(projectId: string): Promise<TodoItem[]> {
     return apiGet<TodoItem[]>(`/items?projectId=${projectId}`);
+}
+
+export function getNotifications(): Promise<Notification[]> {
+    return apiGet<Notification[]>('/notifications');
+}
+
+export function markNotificationsRead(): Promise<void> {
+    return apiPut('/notifications/read', {}).then(() => {});
 }

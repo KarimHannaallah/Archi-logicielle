@@ -8,7 +8,14 @@ export default defineConfig({
         proxy: {
             '/items': 'http://localhost:3000',
             '/auth': 'http://localhost:3000',
-            '/projects': 'http://localhost:3002',
+            '/projects': {
+                target: 'http://localhost:3002',
+                bypass(req) {
+                    if (req.headers.accept?.includes('text/html')) {
+                        return req.url;
+                    }
+                },
+            },
             '/notifications': 'http://localhost:3003',
         },
     },
