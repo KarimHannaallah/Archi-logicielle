@@ -10,17 +10,15 @@ async function teardown(): Promise<void> {
     store.clear();
 }
 
-async function getAll(userId: string, projectId?: string): Promise<TodoItem[]> {
-    let items = Array.from(store.values()).filter(item => item.userId === userId);
-    if (projectId) {
-        items = items.filter(item => item.projectId === projectId);
-    }
+async function getAll(userId?: string, projectId?: string): Promise<TodoItem[]> {
+    let items = Array.from(store.values());
+    if (userId !== undefined && userId !== '') items = items.filter(i => i.userId === userId);
+    if (projectId !== undefined) items = items.filter(i => i.projectId === projectId);
     return items;
 }
 
-async function getById(id: string, userId: string): Promise<TodoItem | undefined> {
-    const item = store.get(id);
-    return item && item.userId === userId ? item : undefined;
+async function getById(id: string): Promise<TodoItem | undefined> {
+    return store.get(id);
 }
 
 async function add(item: TodoItem): Promise<void> {
@@ -29,20 +27,16 @@ async function add(item: TodoItem): Promise<void> {
 
 async function update(
     id: string,
-    userId: string,
     data: { name: string; completed: boolean },
 ): Promise<void> {
     const existing = store.get(id);
-    if (existing && existing.userId === userId) {
+    if (existing) {
         store.set(id, { ...existing, name: data.name, completed: data.completed });
     }
 }
 
-async function remove(id: string, userId: string): Promise<void> {
-    const existing = store.get(id);
-    if (existing && existing.userId === userId) {
-        store.delete(id);
-    }
+async function remove(id: string): Promise<void> {
+    store.delete(id);
 }
 
 const adapter = {

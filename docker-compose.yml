@@ -8,9 +8,12 @@ services:
     build: ./services/task-service
     ports:
       - "3000:3000"
+    env_file:
+      - path: .env
+        required: false
     environment:
       - SQLITE_DB_LOCATION=/data/task.db
-      - JWT_SECRET=change-me-in-production
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - CORS_ORIGIN=http://localhost
       - PORT=3000
       - REDIS_HOST=redis
@@ -23,9 +26,12 @@ services:
     build: ./services/project-service
     ports:
       - "3002:3002"
+    env_file:
+      - path: .env
+        required: false
     environment:
       - SQLITE_DB_LOCATION=/data/project.db
-      - JWT_SECRET=change-me-in-production
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - PORT=3002
       - REDIS_HOST=redis
     volumes:
@@ -37,9 +43,13 @@ services:
     build: ./services/notification-service
     ports:
       - "3003:3003"
+    env_file:
+      - path: .env
+        required: false
     environment:
       - REDIS_HOST=redis
       - PORT=3003
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
     depends_on:
       - redis
 
@@ -52,6 +62,30 @@ services:
       - project-service
       - notification-service
 
+  # ── MySQL optionnel ────────────────────────────────────────────────────────
+  # Pour basculer task-service sur MySQL :
+  #   1. Décommenter MYSQL_HOST=mysql dans .env
+  #   2. Relancer : docker compose up --build task-service
+  #
+  mysql:
+    image: mysql:8
+    profiles: ["mysql"]
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ${MYSQL_DB:-todos}
+      MYSQL_USER: ${MYSQL_USER:-todo}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-todopass}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${MYSQL_USER:-todo}", "-p${MYSQL_PASSWORD:-todopass}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   task-data:
   project-data:
+  mysql-data:

@@ -2,20 +2,8 @@ export interface TodoItem {
     id: string;
     name: string;
     completed: boolean;
+    userId?: string;
     projectId?: string;
-}
-
-export interface UserProfile {
-    id: string;
-    email: string;
-    name: string;
-    createdAt: string;
-    consentGiven: boolean;
-}
-
-export interface AuthResponse {
-    token: string;
-    user: { id: string; email: string; name: string };
 }
 
 export interface Project {
@@ -38,4 +26,17 @@ export interface Notification {
     taskId?: string;
     createdAt: string;
     read: boolean;
+}
+
+export interface UserProfile {
+    id: string;
+    email: string;
+    name: string;
+    createdAt: string;
+    consentGiven: boolean;
+}
+
+export interface AuthResponse {
+    token: string;
+    user: { id: string; email: string; name: string };
 }

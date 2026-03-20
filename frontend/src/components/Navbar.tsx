@@ -12,23 +12,24 @@ export default function Navbar() {
     };
 
     return (
-        <nav className="navbar navbar-expand navbar-dark bg-dark mb-4">
+        <nav className="navbar navbar-expand navbar-custom mb-4">
             <div className="container">
-                <Link className="navbar-brand" to="/">Kanban App</Link>
-                <div className="navbar-nav ms-auto d-flex align-items-center gap-2">
+                <Link className="navbar-brand" to="/">📋 Kanban App</Link>
+                <div className="navbar-nav ms-auto align-items-center gap-1">
                     {user ? (
                         <>
                             <Link className="nav-link" to="/">Projets</Link>
                             <NotificationPanel />
                             <Link className="nav-link" to="/profile">{user.name}</Link>
-                            <button className="btn btn-outline-light btn-sm" onClick={handleLogout}>
-                                Logout
+                            <button className="btn btn-logout ms-2" onClick={handleLogout}>
+                                <i className="fa fa-right-from-bracket me-1" />
+                                Déconnexion
                             </button>
                         </>
                     ) : (
                         <>
-                            <Link className="nav-link" to="/login">Login</Link>
-                            <Link className="nav-link" to="/register">Register</Link>
+                            <Link className="nav-link" to="/login">Connexion</Link>
+                            <Link className="nav-link" to="/register">Inscription</Link>
                         </>
                     )}
                 </div>

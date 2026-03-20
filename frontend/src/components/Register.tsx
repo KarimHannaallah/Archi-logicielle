@@ -31,65 +31,67 @@ export default function Register() {
     };
 
     return (
-        <div className="card p-4">
-            <h2 className="text-center mb-4">Register</h2>
-            {error && <div className="alert alert-danger">{error}</div>}
-            <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                    <label htmlFor="name" className="form-label">Name</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        id="name"
-                        value={name}
-                        onChange={e => setName(e.target.value)}
-                        required
-                    />
-                </div>
-                <div className="mb-3">
-                    <label htmlFor="email" className="form-label">Email</label>
-                    <input
-                        type="email"
-                        className="form-control"
-                        id="email"
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        required
-                    />
-                </div>
-                <div className="mb-3">
-                    <label htmlFor="password" className="form-label">Password</label>
-                    <input
-                        type="password"
-                        className="form-control"
-                        id="password"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        required
-                        minLength={6}
-                    />
-                </div>
-                <div className="mb-3 form-check">
-                    <input
-                        type="checkbox"
-                        className="form-check-input"
-                        id="consent"
-                        checked={consent}
-                        onChange={e => setConsent(e.target.checked)}
-                    />
-                    <label className="form-check-label" htmlFor="consent">
-                        I consent to the processing of my personal data (email, name) for the purpose
-                        of using this application, in accordance with RGPD. I understand I can delete
-                        my account and all associated data at any time.
-                    </label>
-                </div>
-                <button type="submit" className="btn btn-success w-100" disabled={loading || !consent}>
-                    {loading ? 'Registering...' : 'Register'}
-                </button>
-            </form>
-            <p className="text-center mt-3">
-                Already have an account? <Link to="/login">Login</Link>
-            </p>
+        <div className="page-fade">
+            <div className="auth-card">
+                <div className="auth-title">📝 Créer un compte</div>
+                {error && <div className="alert alert-danger py-2">{error}</div>}
+                <form onSubmit={handleSubmit}>
+                    <div className="mb-3">
+                        <label htmlFor="name" className="form-label fw-medium">Name</label>
+                        <input
+                            type="text"
+                            className="form-control"
+                            id="name"
+                            value={name}
+                            onChange={e => setName(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label htmlFor="email" className="form-label fw-medium">Email</label>
+                        <input
+                            type="email"
+                            className="form-control"
+                            id="email"
+                            value={email}
+                            onChange={e => setEmail(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label htmlFor="password" className="form-label fw-medium">Mot de passe</label>
+                        <input
+                            type="password"
+                            className="form-control"
+                            id="password"
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
+                            required
+                            minLength={6}
+                        />
+                    </div>
+                    <div className="mb-3 form-check">
+                        <input
+                            type="checkbox"
+                            className="form-check-input"
+                            id="consent"
+                            checked={consent}
+                            onChange={e => setConsent(e.target.checked)}
+                        />
+                        <label className="form-check-label text-muted" htmlFor="consent" style={{ fontSize: '0.85rem' }}>
+                            I consent to the processing of my personal data (email, name) for the purpose
+                            of using this application, in accordance with RGPD. I understand I can delete
+                            my account and all associated data at any time.
+                        </label>
+                    </div>
+                    <button type="submit" className="btn btn-success w-100" disabled={loading || !consent}>
+                        {loading ? 'Registering...' : 'Register'}
+                    </button>
+                </form>
+                <p className="text-center mt-3 text-muted mb-0" style={{ fontSize: '0.9rem' }}>
+                    Déjà un compte ? <Link to="/login">Se connecter</Link>
+                </p>
+            </div>
         </div>
     );
 }

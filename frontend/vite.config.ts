@@ -6,17 +6,22 @@ export default defineConfig({
     server: {
         port: 5173,
         proxy: {
-            '/items': 'http://localhost:3000',
-            '/auth': 'http://localhost:3000',
-            '/projects': {
-                target: 'http://localhost:3002',
-                bypass(req) {
-                    if (req.headers.accept?.includes('text/html')) {
-                        return req.url;
-                    }
-                },
+            '/api/items': {
+                target: 'http://localhost:3000',
+                rewrite: (path) => path.replace(/^\/api/, ''),
             },
-            '/notifications': 'http://localhost:3003',
+            '/api/auth': {
+                target: 'http://localhost:3000',
+                rewrite: (path) => path.replace(/^\/api/, ''),
+            },
+            '/api/projects': {
+                target: 'http://localhost:3002',
+                rewrite: (path) => path.replace(/^\/api/, ''),
+            },
+            '/api/notifications': {
+                target: 'http://localhost:3003',
+                rewrite: (path) => path.replace(/^\/api/, ''),
+            },
         },
     },
 });

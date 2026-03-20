@@ -1,6 +1,6 @@
 # Audit d'architecture — Todo App
 
-> **Date :** 16 janvier 2026
+> **Date :** 15 février 2026
 > **Projet :** `101-app` (Todo App Express + React + SQLite/MySQL)
 > **Objectif :** Diagnostiquer les problèmes de couplage, de responsabilités et les zones à risque **avant toute refactorisation**.
 

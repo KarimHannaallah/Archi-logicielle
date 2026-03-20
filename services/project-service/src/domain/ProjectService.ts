@@ -9,6 +9,8 @@ export interface ProjectService {
     closeProject(id: string, userId: string): Promise<void>;
     incrementCompletedTasks(projectId: string, userId: string): Promise<void>;
     decrementCompletedTasks(projectId: string, userId: string): Promise<void>;
+    incrementTotalTasks(projectId: string, userId: string): Promise<void>;
+    decrementTotalTasks(projectId: string, userId: string): Promise<void>;
     deleteProject(id: string, userId: string): Promise<void>;
     updateProject(id: string, userId: string, data: { name?: string }): Promise<void>;
 }
@@ -57,6 +59,18 @@ export function createProjectService(repository: ProjectRepository): ProjectServ
             if (!project) return;
             const completedTasks = Math.max(0, project.completedTasks - 1);
             await repository.update(projectId, userId, { completedTasks, status: 'open' });
+        },
+
+        async incrementTotalTasks(projectId: string, userId: string): Promise<void> {
+            const project = await repository.getById(projectId, userId);
+            if (!project) return;
+            await repository.update(projectId, userId, { totalTasks: project.totalTasks + 1 });
+        },
+
+        async decrementTotalTasks(projectId: string, userId: string): Promise<void> {
+            const project = await repository.getById(projectId, userId);
+            if (!project) return;
+            await repository.update(projectId, userId, { totalTasks: Math.max(0, project.totalTasks - 1) });
         },
 
         async deleteProject(id: string, userId: string): Promise<void> {

@@ -25,39 +25,41 @@ export default function Login() {
     };
 
     return (
-        <div className="card p-4">
-            <h2 className="text-center mb-4">Login</h2>
-            {error && <div className="alert alert-danger">{error}</div>}
-            <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                    <label htmlFor="email" className="form-label">Email</label>
-                    <input
-                        type="email"
-                        className="form-control"
-                        id="email"
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        required
-                    />
-                </div>
-                <div className="mb-3">
-                    <label htmlFor="password" className="form-label">Password</label>
-                    <input
-                        type="password"
-                        className="form-control"
-                        id="password"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        required
-                    />
-                </div>
-                <button type="submit" className="btn btn-primary w-100" disabled={loading}>
-                    {loading ? 'Logging in...' : 'Login'}
-                </button>
-            </form>
-            <p className="text-center mt-3">
-                No account? <Link to="/register">Register</Link>
-            </p>
+        <div className="page-fade">
+            <div className="auth-card">
+                <div className="auth-title">🔐 Connexion</div>
+                {error && <div className="alert alert-danger py-2">{error}</div>}
+                <form onSubmit={handleSubmit}>
+                    <div className="mb-3">
+                        <label htmlFor="email" className="form-label fw-medium">Adresse e-mail</label>
+                        <input
+                            type="email"
+                            className="form-control"
+                            id="email"
+                            value={email}
+                            onChange={e => setEmail(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label htmlFor="password" className="form-label fw-medium">Mot de passe</label>
+                        <input
+                            type="password"
+                            className="form-control"
+                            id="password"
+                            value={password}
+                            onChange={e => setPassword(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <button type="submit" className="btn btn-primary w-100" disabled={loading}>
+                        {loading ? 'Connexion...' : 'Se connecter'}
+                    </button>
+                </form>
+                <p className="text-center mt-3 text-muted mb-0" style={{ fontSize: '0.9rem' }}>
+                    Pas encore de compte ? <Link to="/register">S'inscrire</Link>
+                </p>
+            </div>
         </div>
     );
 }

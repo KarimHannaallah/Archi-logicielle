@@ -26,11 +26,11 @@ export default function App() {
                             <Route path="/profile" element={
                                 <PrivateRoute><Profile /></PrivateRoute>
                             } />
-                            <Route path="/projects/:id" element={
-                                <PrivateRoute><ProjectDetail /></PrivateRoute>
-                            } />
                             <Route path="/" element={
                                 <PrivateRoute><ProjectList /></PrivateRoute>
+                            } />
+                            <Route path="/projects/:id" element={
+                                <PrivateRoute><ProjectDetail /></PrivateRoute>
                             } />
                         </Routes>
                     </div>

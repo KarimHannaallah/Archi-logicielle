@@ -153,13 +153,13 @@ describe('sqlite persistence (unit with mocks)', () => {
     test('getAll converts completed 1/0 to boolean', async () => {
         const sqlite = await loadAndInit({
             allRows: [
-                { id: '1', name: 'A', completed: 1, user_id: 'u' },
-                { id: '2', name: 'B', completed: 0, user_id: 'u' },
+                { id: '1', name: 'A', completed: 1 },
+                { id: '2', name: 'B', completed: 0 },
             ],
         });
-        await expect(sqlite.getAll('u')).resolves.toEqual([
-            { id: '1', name: 'A', completed: true, userId: 'u', projectId: '' },
-            { id: '2', name: 'B', completed: false, userId: 'u', projectId: '' },
+        await expect(sqlite.getAll()).resolves.toEqual([
+            { id: '1', name: 'A', completed: true },
+            { id: '2', name: 'B', completed: false },
         ]);
     });
 
@@ -167,32 +167,30 @@ describe('sqlite persistence (unit with mocks)', () => {
         const sqlite = await loadAndInit({
             allError: new Error('all failed'),
         });
-        await expect(sqlite.getAll('u')).rejects.toThrow('all failed');
+        await expect(sqlite.getAll()).rejects.toThrow('all failed');
     });
 
     test('getById returns first item and converts completed', async () => {
         const sqlite = await loadAndInit({
-            allRows: [{ id: 'x', name: 'X', completed: 1, user_id: 'u' }],
+            allRows: [{ id: 'x', name: 'X', completed: 1 }],
         });
-        await expect(sqlite.getById('x', 'u')).resolves.toEqual({
+        await expect(sqlite.getById('x')).resolves.toEqual({
             id: 'x',
             name: 'X',
             completed: true,
-            userId: 'u',
-            projectId: '',
         });
     });
 
     test('getById returns undefined when no rows', async () => {
         const sqlite = await loadAndInit({ allRows: [] });
-        await expect(sqlite.getById('missing', 'u')).resolves.toBeUndefined();
+        await expect(sqlite.getById('missing')).resolves.toBeUndefined();
     });
 
     test('getById rejects on db.all error', async () => {
         const sqlite = await loadAndInit({
             allError: new Error('getById failed'),
         });
-        await expect(sqlite.getById('x', 'u')).rejects.toThrow('getById failed');
+        await expect(sqlite.getById('x')).rejects.toThrow('getById failed');
     });
 
     // ---------- add / update / remove (success + error) ----------
@@ -200,13 +198,13 @@ describe('sqlite persistence (unit with mocks)', () => {
     test.each([
         [
             'add',
-            (s) => s.add({ id: '1', name: 'A', completed: true, userId: 'u', projectId: '' }),
+            (s) => s.add({ id: '1', name: 'A', completed: true }),
         ],
         [
             'update',
-            (s) => s.update('1', 'u', { name: 'A', completed: false, projectId: '' }),
+            (s) => s.update('1', { name: 'A', completed: false }),
         ],
-        ['remove', (s) => s.remove('1', 'u')],
+        ['remove', (s) => s.remove('1')],
     ])('%s resolves on success', async (_name, call) => {
         const sqlite = await loadAndInit({ runError: null });
         await expect(call(sqlite)).resolves.toBeUndefined();
@@ -215,13 +213,13 @@ describe('sqlite persistence (unit with mocks)', () => {
     test.each([
         [
             'add',
-            (s) => s.add({ id: '1', name: 'A', completed: true, userId: 'u', projectId: '' }),
+            (s) => s.add({ id: '1', name: 'A', completed: true }),
         ],
         [
             'update',
-            (s) => s.update('1', 'u', { name: 'A', completed: false, projectId: '' }),
+            (s) => s.update('1', { name: 'A', completed: false }),
         ],
-        ['remove', (s) => s.remove('1', 'u')],
+        ['remove', (s) => s.remove('1')],
     ])('%s rejects on db.run error', async (_name, call) => {
         const sqlite = await loadAndInit({
             runError: new Error('run failed'),
@@ -236,19 +234,19 @@ describe('sqlite persistence (unit with mocks)', () => {
         const sqlite = require('../../src/persistence/sqlite');
         await sqlite.init();
 
-        await sqlite.add({ id: '1', name: 'A', completed: true, userId: 'u', projectId: '' });
-        await sqlite.add({ id: '2', name: 'B', completed: false, userId: 'u', projectId: '' });
-        await sqlite.update('1', 'u', { name: 'A', completed: true, projectId: '' });
-        await sqlite.update('2', 'u', { name: 'B', completed: false, projectId: '' });
+        await sqlite.add({ id: '1', name: 'A', completed: true });
+        await sqlite.add({ id: '2', name: 'B', completed: false });
+        await sqlite.update('1', { name: 'A', completed: true });
+        await sqlite.update('2', { name: 'B', completed: false });
 
-        // INSERT params: [id, name, completedFlag, userId]
+        // INSERT params: [id, name, completedFlag]
         const insertCalls = dbObj.run.mock.calls.filter((c) =>
             String(c[0]).includes('INSERT INTO'),
         );
         expect(insertCalls[0][1][2]).toBe(1);
         expect(insertCalls[1][1][2]).toBe(0);
 
-        // UPDATE params: [name, completedFlag, id, userId]
+        // UPDATE params: [name, completedFlag, id]
         const updateCalls = dbObj.run.mock.calls.filter((c) =>
             String(c[0]).includes('UPDATE todo_items'),
         );

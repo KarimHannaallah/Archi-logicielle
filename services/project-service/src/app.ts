@@ -1,9 +1,10 @@
 import express from 'express';
 import type { ProjectService } from './domain/ProjectService';
-import { makeGetProjects, makeGetProject } from './routes/getProjects';
+import { makeGetProjects } from './routes/getProjects';
 import { makeAddProject } from './routes/addProject';
 import { makeUpdateProject } from './routes/updateProject';
 import { makeDeleteProject } from './routes/deleteProject';
+import { makeGetProject } from './routes/getProject';
 import { authMiddleware } from './middleware/auth';
 
 interface AppOptions {

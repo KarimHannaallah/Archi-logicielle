@@ -1,6 +1,4 @@
-import type { Notification } from '../types';
-
-const API_BASE = '';
+const API_BASE = '/api';
 
 function getHeaders(): HeadersInit {
     const headers: HeadersInit = { 'Content-Type': 'application/json' };
@@ -54,33 +52,16 @@ export async function apiDelete(path: string): Promise<void> {
     }
 }
 
-// --- Projects API ---
-import type { Project, TodoItem } from '../types';
+// --- Projects ---
+import type { Project, TodoItem, Notification } from '../types';
 
-export function getProjects(): Promise<Project[]> {
-    return apiGet<Project[]>('/projects');
-}
+export const getProjects = () => apiGet<Project[]>('/projects');
+export const createProject = (name: string) => apiPost<Project>('/projects', { name });
+export const getProject = (id: string) => apiGet<Project>(`/projects/${id}`);
+export const deleteProject = (id: string) => apiDelete(`/projects/${id}`);
+export const getTasksByProject = (projectId: string) =>
+    apiGet<TodoItem[]>(`/items?projectId=${projectId}`);
 
-export function getProject(id: string): Promise<Project> {
-    return apiGet<Project>(`/projects/${id}`);
-}
-
-export function createProject(name: string): Promise<Project> {
-    return apiPost<Project>('/projects', { name });
-}
-
-export function deleteProject(id: string): Promise<void> {
-    return apiDelete(`/projects/${id}`);
-}
-
-export function getTasksByProject(projectId: string): Promise<TodoItem[]> {
-    return apiGet<TodoItem[]>(`/items?projectId=${projectId}`);
-}
-
-export function getNotifications(): Promise<Notification[]> {
-    return apiGet<Notification[]>('/notifications');
-}
-
-export function markNotificationsRead(): Promise<void> {
-    return apiPut('/notifications/read', {}).then(() => {});
-}
+// --- Notifications ---
+export const getNotifications = () => apiGet<Notification[]>('/notifications');
+export const markNotificationsRead = () => apiPut<void>('/notifications/read', {});

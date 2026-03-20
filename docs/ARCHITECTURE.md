@@ -208,8 +208,6 @@ graph TB
 | `id` | VARCHAR(36) | UUID v4 |
 | `name` | VARCHAR(255) | Nom de la tache |
 | `completed` | BOOLEAN | Etat de completion |
-| `user_id` | VARCHAR(36) | Propriétaire de la tâche |
-| `project_id` | VARCHAR(36) | Projet associé |
 
 ### Table `users`
 
@@ -262,10 +260,11 @@ backend/spec/
     └── no-sqlite-in-test.spec.js  # Non-regression: isolation infra
 
 frontend/e2e/
-└── todo.spec.ts             # Playwright: register + CRUD complet
+├── todo.spec.ts                    # Playwright: register + CRUD complet (sans Docker)
+└── project-workflow.spec.ts        # Playwright: workflow event-driven complet (avec Redis)
 ```
 
-**Total : 67 tests backend (Jest) + 10 scenarios E2E (Playwright)**
+**Total : 82 tests backend (Jest) + 13 scenarios E2E (Playwright)**
 
 ---
 
@@ -279,12 +278,12 @@ Pub/Sub (voir ADR-004).
 
 ```mermaid
 graph TB
-    User["Utilisateur"]
+    User["👤 Utilisateur"]
     FE["Frontend\n(React + Vite)"]
     Nginx["Nginx\n(reverse proxy :80)"]
 
     subgraph "Microservices"
-        TS["task-service\n:3000"]
+        TS["task-service\n:3001"]
         PS["project-service\n:3002"]
         NS["notification-service\n:3003"]
     end
@@ -292,23 +291,25 @@ graph TB
     subgraph "Bases de données"
         TDB[("SQLite\ntask.db")]
         PDB[("SQLite\nproject.db")]
+        NDB[("SQLite\nnotification.db")]
     end
 
     Redis(["Redis\nPub/Sub\n:6379"])
 
     User --> FE
     FE --> Nginx
-    Nginx -->|"/items, /auth"| TS
-    Nginx -->|"/projects"| PS
-    Nginx -->|"/notifications"| NS
+    Nginx -->|"/tasks/*"| TS
+    Nginx -->|"/projects/*"| PS
+    Nginx -->|"/notifications/*"| NS
 
     TS --- TDB
     PS --- PDB
+    NS --- NDB
 
-    TS -->|"PUBLISH TaskCreated\nTaskCompleted\nTaskReopened\nTaskDeleted"| Redis
-    Redis -->|"SUBSCRIBE"| PS
-    Redis -->|"SUBSCRIBE"| NS
-    PS -->|"PUBLISH ProjectClosed"| Redis
+    TS -->|"PUBLISH task.completed\nPUBLISH task.reopened"| Redis
+    Redis -->|"SUBSCRIBE task.*\nproject.*"| PS
+    Redis -->|"SUBSCRIBE task.*\nproject.*"| NS
+    PS -->|"PUBLISH project.closed"| Redis
 
     style Redis fill:#dc382c,color:#fff
     style TS fill:#e1f5fe
@@ -323,24 +324,21 @@ graph TB
 lire, mettre à jour et supprimer des tâches. Chaque tâche est associée à un `projectId`
 (référence externe, sans connaissance du projet) et à un `userId`. Lorsqu'une tâche
 passe à `completed: true`, le service **publie** un événement `TaskCompleted` sur
-Redis. Lorsqu'elle repasse à `completed: false`, il publie `TaskReopened`. À la
-création d'une tâche avec `projectId`, il publie `TaskCreated`. À la suppression,
-il publie `TaskDeleted`. Ce service ne connaît pas l'existence du project-service
-ni du notification-service.
+Redis. Lorsqu'elle repasse à `completed: false`, il publie `TaskReopened`. Ce service
+ne connaît pas l'existence du project-service ni du notification-service.
 
 **Project Service** — Source of truth des projets. Expose un CRUD complet pour gérer
 les projets. Il maintient en local une **projection** (`completedTasks` / `totalTasks`)
-mise à jour en écoutant les événements `TaskCreated`, `TaskCompleted`, `TaskReopened`
-et `TaskDeleted` publiés par le task-service. Dès que `completedTasks === totalTasks`
-(et `totalTasks > 0`), le projet passe automatiquement à l'état `closed` et le service
-**publie** un événement `ProjectClosed` sur Redis. Ce service ne fait jamais d'appel
-HTTP vers le task-service.
+mise à jour en écoutant les événements `TaskCompleted` et `TaskReopened` publiés par
+le task-service. Dès que `completedTasks === totalTasks` (et `totalTasks > 0`), le
+projet passe automatiquement à l'état `closed` et le service **publie** un événement
+`ProjectClosed` sur Redis. Ce service ne fait jamais d'appel HTTP vers le task-service.
 
-**Notification Service** — Consumer avec endpoint de lecture. Il **écoute** les
-événements (`TaskCompleted`, `TaskReopened`, `ProjectClosed`, `TaskDeleted`), les
-logue en console et les stocke en mémoire. Expose `GET /notifications` pour consulter
-les notifications de l'utilisateur et `PUT /notifications/read` pour les marquer
-comme lues.
+**Notification Service** — Consumer pur (worker pattern). N'expose aucun endpoint
+d'écriture. Il **écoute** les 3 événements (`TaskCompleted`, `TaskReopened`,
+`ProjectClosed`), les logue en console et les persiste dans sa propre base SQLite.
+Expose uniquement `GET /notifications` pour consulter l'historique des événements
+reçus. C'est un observateur passif du système, jamais un émetteur.
 
 ---
 
@@ -348,7 +346,7 @@ comme lues.
 
 ```mermaid
 sequenceDiagram
-    actor User as Utilisateur
+    actor User as 👤 Utilisateur
     participant FE as Frontend (React)
     participant TS as task-service
     participant Redis as Redis Pub/Sub
@@ -356,11 +354,11 @@ sequenceDiagram
     participant NS as notification-service
 
     User->>FE: Coche une tâche (completed)
-    FE->>TS: PUT /items/:id { completed: true }
+    FE->>TS: PATCH /tasks/:taskId { completed: true }
     TS->>TS: Mettre à jour la tâche en DB
     TS-->>FE: 200 OK { task }
 
-    TS->>Redis: PUBLISH TaskCompleted
+    TS->>Redis: PUBLISH task.completed { TaskCompleted event }
 
     par Consumers parallèles
         Redis-->>PS: TaskCompleted
@@ -369,50 +367,20 @@ sequenceDiagram
 
         alt Toutes les tâches sont terminées
             PS->>PS: Passer projet à status = closed
-            PS->>Redis: PUBLISH ProjectClosed
+            PS->>Redis: PUBLISH project.closed { ProjectClosed event }
             Redis-->>NS: ProjectClosed
-            NS->>NS: Stocker notification
+            NS->>NS: Persister en DB + log console
         end
 
     and
         Redis-->>NS: TaskCompleted
-        NS->>NS: Stocker notification
+        NS->>NS: Persister en DB + log console
     end
 
-    User->>FE: Clique sur la cloche
+    User->>FE: Consulte GET /notifications
     FE->>NS: GET /notifications
     NS-->>FE: [ TaskCompleted, ProjectClosed ]
     FE-->>User: Affiche les notifications
-```
-
----
-
-### Diagramme de séquence — "Reopen task → Project revient open"
-
-```mermaid
-sequenceDiagram
-    actor User as Utilisateur
-    participant FE as Frontend
-    participant TS as task-service
-    participant Redis as Redis Pub/Sub
-    participant PS as project-service
-    participant NS as notification-service
-
-    User->>FE: Décoche une tâche
-    FE->>TS: PUT /items/:id { completed: false }
-    TS->>TS: Mettre à jour en DB
-    TS-->>FE: 200 OK
-
-    TS->>Redis: PUBLISH TaskReopened
-
-    par Consumers
-        Redis-->>PS: TaskReopened
-        PS->>PS: Décrémenter completedTasks
-        PS->>PS: Si status était closed → repasser à open
-    and
-        Redis-->>NS: TaskReopened
-        NS->>NS: Stocker notification "Tâche réouverte"
-    end
 ```
 
 ---
@@ -430,28 +398,21 @@ graph TB
     end
 
     subgraph NC ["Notification Context (notification-service)"]
-        Notification["Notification\n─────────────\n• id: UUID\n• eventType: string\n• message: string\n• userId: UUID (ref)\n• createdAt: datetime\n• read: boolean"]
-        EventLog["Event Log\n─────────────\n(stockage in-memory\ndes events reçus)"]
-        Notification --- EventLog
+        Notification["Notification\n─────────────\n• id: UUID\n• eventType: string\n• eventId: string\n• message: string\n• userId: UUID (ref)\n• projectId: UUID\n• createdAt: datetime\n• read: boolean"]
+        InMemStore["In-Memory Store\n─────────────\n(Notification[]\nmax 1000 entrées)"]
+        Notification --- InMemStore
     end
 
-    TCEvent1["TaskCompleted\n{ eventId, taskId,\nprojectId, userId }"]
-    TCEvent2["TaskReopened\n{ eventId, taskId,\nprojectId, userId }"]
-    TCEvent3["TaskCreated\n{ eventId, taskId,\nprojectId, userId }"]
-    TCEvent4["TaskDeleted\n{ eventId, taskId,\nprojectId, userId,\nwasCompleted }"]
-    PCEvent1["ProjectClosed\n{ eventId,\nprojectId, userId }"]
+    TCEvent1["📤 TaskCompleted\n{ eventId, taskId,\nprojectId, userId }"]
+    TCEvent2["📤 TaskReopened\n{ eventId, taskId,\nprojectId, userId }"]
+    PCEvent1["📤 ProjectClosed\n{ eventId,\nprojectId, userId }"]
 
     TC -->|publie| TCEvent1
     TC -->|publie| TCEvent2
-    TC -->|publie| TCEvent3
-    TC -->|publie| TCEvent4
     TCEvent1 -->|consommé par| PC
     TCEvent2 -->|consommé par| PC
-    TCEvent3 -->|consommé par| PC
-    TCEvent4 -->|consommé par| PC
     TCEvent1 -->|consommé par| NC
     TCEvent2 -->|consommé par| NC
-    TCEvent4 -->|consommé par| NC
     PC -->|publie| PCEvent1
     PCEvent1 -->|consommé par| NC
 
@@ -460,10 +421,113 @@ graph TB
     style NC fill:#fff3e0,stroke:#e65100
     style TCEvent1 fill:#bbdefb
     style TCEvent2 fill:#bbdefb
-    style TCEvent3 fill:#bbdefb
-    style TCEvent4 fill:#bbdefb
     style PCEvent1 fill:#c8e6c9
 ```
+
+---
+
+### Diagramme de séquence — "Reopen task → Project revient open"
+
+```mermaid
+sequenceDiagram
+    actor User as 👤 Utilisateur
+    participant FE as Frontend (React)
+    participant TS as task-service
+    participant Redis as Redis Pub/Sub
+    participant PS as project-service
+
+    User->>FE: Décoche une tâche (reopen)
+    FE->>TS: PUT /items/:taskId { completed: false }
+    TS->>TS: Mettre à jour la tâche (completed → false)
+    TS-->>FE: 200 OK { task }
+    TS->>Redis: PUBLISH TaskReopened { eventId, taskId, projectId, userId }
+
+    Redis-->>PS: TaskReopened
+    PS->>PS: Décrémenter completedTasks
+    PS->>PS: status redevient "open"
+    Note over PS: completedTasks < totalTasks → status = open
+
+    Redis-->>NS: TaskReopened
+    NS->>NS: Créer Notification "Tâche réouverte dans le projet {projectId}"
+```
+
+---
+
+### Ports & Adapters par service
+
+```mermaid
+graph TB
+    subgraph "task-service"
+        TS_HTTP["HTTP (Express :3000)\n/items, /auth"]
+        TS_AUTH["Auth Middleware (JWT)"]
+        TS_SVC["TodoService"]
+        TS_REPO["<<interface>>\nTodoRepository"]
+        TS_SQLITE["SQLite Adapter"]
+        TS_MEM["InMemory Adapter"]
+        TS_REDIS["Redis Publisher\n(publishEvent)"]
+
+        TS_HTTP --> TS_AUTH --> TS_SVC
+        TS_SVC --> TS_REPO
+        TS_SVC --> TS_REDIS
+        TS_REPO -.-> TS_SQLITE
+        TS_REPO -.-> TS_MEM
+    end
+
+    subgraph "project-service"
+        PS_HTTP["HTTP (Express :3002)\n/projects"]
+        PS_AUTH2["Auth Middleware (JWT)"]
+        PS_SVC["ProjectService"]
+        PS_REPO["<<interface>>\nProjectRepository"]
+        PS_MEM2["InMemory Adapter"]
+        PS_SUB["Redis Subscriber\n(TaskCompleted, TaskReopened, TaskCreated)"]
+        PS_PUB["Redis Publisher\n(ProjectClosed)"]
+
+        PS_HTTP --> PS_AUTH2 --> PS_SVC
+        PS_SUB --> PS_SVC
+        PS_SVC --> PS_REPO
+        PS_SVC --> PS_PUB
+        PS_REPO -.-> PS_MEM2
+    end
+
+    subgraph "notification-service"
+        NS_HTTP["HTTP (Express :3003)\n/notifications"]
+        NS_AUTH3["Auth Middleware (JWT)"]
+        NS_STORE["In-Memory Store\n(Notification[])"]
+        NS_SUB["Redis Subscriber\n(TaskCompleted, TaskReopened, ProjectClosed)"]
+
+        NS_HTTP --> NS_AUTH3 --> NS_STORE
+        NS_SUB --> NS_STORE
+    end
+```
+
+---
+
+### Schéma des événements
+
+| Channel | Producteur | Consommateurs | Payload clé |
+|---|---|---|---|
+| `TaskCreated` | task-service | project-service | `eventId, taskId, projectId, userId` |
+| `TaskCompleted` | task-service | project-service, notification-service | `eventId, taskId, projectId, userId` |
+| `TaskReopened` | task-service | project-service, notification-service | `eventId, taskId, projectId, userId` |
+| `ProjectClosed` | project-service | notification-service | `eventId, projectId, userId` |
+
+Contrats complets : `docs/events/*.v1.json`
+
+---
+
+### Idempotence et logs structurés
+
+Chaque service qui consomme des événements maintient un `Set<string>` des `eventId`
+déjà traités. Si le même événement arrive deux fois (reconnexion Redis), il est
+ignoré avec un log `DUPLICATE ... — skipping`.
+
+Les logs suivent le format structuré :
+```
+[project-service] [2024-01-15T10:23:45.123Z] RECEIVED TaskCompleted | eventId=abc-123 | projectId=proj-456
+[task-service]    [2024-01-15T10:23:45.100Z] PUBLISHED TaskCompleted | eventId=abc-123 | subscribers=2
+```
+
+---
 
 ### Concepts partagés entre les contextes
 
@@ -489,50 +553,3 @@ et d'une projection locale (`completedTasks / totalTasks`). Chaque contexte poss
 sa propre vision de `projectId`, cohérente avec ses responsabilités métier, et les
 événements (comme `TaskCompleted`) servent de **pont entre les contextes** sans jamais
 les coupler directement.
-
----
-
-## Tableau récapitulatif des événements
-
-| Événement | Producteur | Consommateurs | Payload clé |
-|-----------|-----------|---------------|-------------|
-| TaskCreated | task-service | project-service | taskId, projectId, userId |
-| TaskCompleted | task-service | project-service, notification-service | taskId, projectId, userId |
-| TaskReopened | task-service | project-service, notification-service | taskId, projectId, userId |
-| TaskDeleted | task-service | project-service | taskId, projectId, userId, wasCompleted |
-| ProjectClosed | project-service | notification-service | projectId, userId |
-
----
-
-## Idempotence & Logs structurés
-
-Chaque consumer (project-service et notification-service) implémente une garde d'idempotence :
-
-- Un `Set<string>` stocke les `eventId` déjà traités
-- Si un event arrive avec un `eventId` déjà vu → skip avec log `DUPLICATE`
-- Le Set est cappé à 10 000 entrées (FIFO) pour éviter les fuites mémoire
-
-Format des logs :
-```
-[2026-03-15T14:30:00.000Z] PUBLISHED TaskCompleted | eventId=abc-123 | subscribers=2
-[2026-03-15T14:30:00.005Z] RECEIVED TaskCompleted | eventId=abc-123 | projectId=def-456
-[2026-03-15T14:30:00.010Z] DUPLICATE TaskCompleted | eventId=abc-123 — skipping
-```
-
----
-
-## Tests — Couverture mise à jour (Partie 2)
-
-```
-services/task-service/spec/        68 tests Jest (unit + intégration)
-services/project-service/spec/     14+ tests Jest (CRUD + auto-close)
-
-frontend/e2e/
-├── todo.spec.ts                   Tests CRUD tâches dans un projet
-└── project-workflow.spec.ts       3 tests workflow complet :
-    ├── create project → task → complete → auto-close → notifications
-    ├── project stays open if not all tasks completed
-    └── TaskReopened notification appears
-```
-
-**Total : 82+ tests backend (Jest) + 13+ scénarios E2E (Playwright)**

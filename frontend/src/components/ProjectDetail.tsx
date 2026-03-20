@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getProject, getTasksByProject, apiPost, apiPut, apiDelete } from '../api/client';
 import type { Project, TodoItem } from '../types';
@@ -7,121 +7,197 @@ export default function ProjectDetail() {
     const { id } = useParams<{ id: string }>();
     const [project, setProject] = useState<Project | null>(null);
     const [tasks, setTasks] = useState<TodoItem[]>([]);
-    const [taskName, setTaskName] = useState('');
+    const [newTaskName, setNewTaskName] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
-    const refresh = useCallback(async () => {
+    const refresh = () => {
+        if (id) getProject(id).then(setProject).catch(() => {});
+    };
+
+    useEffect(() => {
         if (!id) return;
-        const [p, t] = await Promise.all([getProject(id), getTasksByProject(id)]);
-        setProject(p);
-        setTasks(t);
+        Promise.all([getProject(id), getTasksByProject(id)])
+            .then(([p, t]) => { setProject(p); setTasks(t); })
+            .catch(() => setError('Impossible de charger le projet.'))
+            .finally(() => setLoading(false));
     }, [id]);
 
-    useEffect(() => { refresh(); }, [refresh]);
-
-    const handleAddTask = async () => {
-        if (!taskName.trim() || !id) return;
-        await apiPost('/items', { name: taskName.trim(), projectId: id });
-        setTaskName('');
-        // Petit délai pour laisser le temps à l'event TaskCreated d'incrémenter totalTasks
-        setTimeout(refresh, 500);
+    const addTask = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newTaskName.trim() || !id) return;
+        try {
+            const task = await apiPost<TodoItem>('/items', { name: newTaskName, projectId: id });
+            setTasks(prev => [...prev, task]);
+            setNewTaskName('');
+            setTimeout(refresh, 500);
+        } catch (err: any) {
+            setError(err.message);
+        }
     };
 
-    const handleToggle = async (task: TodoItem) => {
-        await apiPut(`/items/${task.id}`, { name: task.name, completed: !task.completed });
-        setTimeout(refresh, 500);
+    const toggleTask = async (task: TodoItem) => {
+        try {
+            const updated = await apiPut<TodoItem>(`/items/${task.id}`, {
+                name: task.name,
+                completed: !task.completed,
+            });
+            setTasks(prev => prev.map(t => t.id === task.id ? updated : t));
+            if (id) setTimeout(refresh, 500);
+        } catch (err: any) {
+            setError(err.message);
+        }
     };
 
-    const handleDeleteTask = async (task: TodoItem) => {
-        await apiDelete(`/items/${task.id}`);
-        setTasks(prev => prev.filter(t => t.id !== task.id));
+    const deleteTask = async (task: TodoItem) => {
+        try {
+            await apiDelete(`/items/${task.id}`);
+            setTasks(prev => prev.filter(t => t.id !== task.id));
+            setTimeout(refresh, 500);
+        } catch (err: any) {
+            setError(err.message);
+        }
     };
 
-    if (!project) return <p className="text-center">Chargement...</p>;
+    if (loading) return <div className="text-center mt-5 text-muted">Chargement...</div>;
+    if (!project) return (
+        <div className="mt-4 page-fade">
+            <div className="alert alert-danger">{error || 'Projet introuvable.'}</div>
+            <Link to="/" className="btn btn-outline-secondary btn-sm">← Retour</Link>
+        </div>
+    );
 
     const todo = tasks.filter(t => !t.completed);
     const done = tasks.filter(t => t.completed);
+    const pct = project.totalTasks > 0
+        ? Math.round((project.completedTasks / project.totalTasks) * 100)
+        : 0;
 
     return (
-        <>
-            <div className="d-flex align-items-center justify-content-between mb-3">
-                <div>
-                    <Link to="/" className="text-decoration-none">&larr; Retour</Link>
-                    <h3 className="mt-1 mb-0">{project.name}</h3>
-                </div>
-                <span className={`badge fs-6 ${project.status === 'open' ? 'bg-success' : 'bg-danger'}`}>
-                    {project.status}
+        <div className="page-fade">
+            {/* Header */}
+            <div className="d-flex align-items-center gap-2 mb-2">
+                <Link to="/" className="btn btn-outline-secondary btn-sm">←</Link>
+                <h3 className="page-title mb-0">{project.name}</h3>
+                <span className={`badge-status ${project.status === 'closed' ? 'closed' : 'open'}`}>
+                    {project.status === 'closed' ? 'Fermé' : 'Ouvert'}
                 </span>
+                <small className="text-muted ms-auto">
+                    {project.completedTasks}/{project.totalTasks} terminée{project.totalTasks !== 1 ? 's' : ''}
+                </small>
             </div>
 
-            <p className="text-muted">
-                {project.completedTasks}/{project.totalTasks} tâches terminées
-            </p>
-
-            <div className="input-group mb-3">
-                <input
-                    className="form-control"
-                    placeholder="Nouvelle tâche"
-                    value={taskName}
-                    onChange={e => setTaskName(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleAddTask()}
+            {/* Global progress */}
+            <div className="progress mb-4">
+                <div
+                    className="progress-bar"
+                    role="progressbar"
+                    style={{ width: `${pct}%` }}
+                    aria-valuenow={pct}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
                 />
-                <button className="btn btn-primary" onClick={handleAddTask}>
-                    Ajouter
-                </button>
             </div>
 
+            {error && <div className="alert alert-danger py-1">{error}</div>}
+
+            {/* Add task form */}
+            <form onSubmit={addTask} className="mb-4">
+                <div className="input-group">
+                    <input
+                        className="form-control"
+                        value={newTaskName}
+                        onChange={e => setNewTaskName(e.target.value)}
+                        type="text"
+                        placeholder="New Item"
+                        disabled={project.status === 'closed'}
+                    />
+                    <button
+                        type="submit"
+                        className="btn btn-success"
+                        disabled={!newTaskName.trim() || project.status === 'closed'}
+                    >
+                        Add Item
+                    </button>
+                </div>
+            </form>
+
+            {tasks.length === 0 && (
+                <p className="text-center">No items yet! Add one above!</p>
+            )}
+
+            {/* Kanban columns */}
             <div className="row">
-                <div className="col-6">
-                    <h5 className="text-center">
-                        <span className="badge bg-secondary">À faire ({todo.length})</span>
-                    </h5>
-                    {todo.map(task => (
-                        <div key={task.id} className="card mb-2">
-                            <div className="card-body d-flex align-items-center justify-content-between py-2">
-                                <span>{task.name}</span>
-                                <div>
+                <div className="col-md-6 mb-3">
+                    <div className="kanban-col">
+                        <div className="kanban-col-header">À faire ({todo.length})</div>
+                        {todo.length === 0 && (
+                            <div className="empty-state py-3">
+                                <div className="empty-icon" style={{ fontSize: '1.8rem' }}>✅</div>
+                                <p className="empty-text mb-0">Aucune tâche en attente</p>
+                            </div>
+                        )}
+                        {todo.map(task => (
+                            <div key={task.id} className="item task-card task-todo">
+                                <span className="task-name">{task.name}</span>
+                                <div className="task-actions">
                                     <button
-                                        className="btn btn-outline-success btn-sm me-1"
-                                        onClick={() => handleToggle(task)}
-                                        title="Terminer"
+                                        className="btn btn-link btn-sm text-success p-0"
+                                        onClick={() => toggleTask(task)}
+                                        aria-label="Mark item as complete"
+                                        title="Complete"
                                     >
-                                        <i className="fa fa-check" />
+                                        <i className="far fa-square" />
                                     </button>
                                     <button
-                                        className="btn btn-outline-danger btn-sm"
-                                        onClick={() => handleDeleteTask(task)}
-                                        title="Supprimer"
+                                        className="btn btn-link btn-sm text-danger p-0"
+                                        onClick={() => deleteTask(task)}
+                                        aria-label="Remove Item"
+                                        title="Remove"
                                     >
                                         <i className="fa fa-trash" />
                                     </button>
                                 </div>
                             </div>
-                        </div>
-                    ))}
-                    {todo.length === 0 && <p className="text-muted text-center small">Aucune tâche</p>}
+                        ))}
+                    </div>
                 </div>
 
-                <div className="col-6">
-                    <h5 className="text-center">
-                        <span className="badge bg-success">Terminées ({done.length})</span>
-                    </h5>
-                    {done.map(task => (
-                        <div key={task.id} className="card mb-2 border-success">
-                            <div className="card-body d-flex align-items-center justify-content-between py-2">
-                                <span className="text-decoration-line-through text-muted">{task.name}</span>
-                                <button
-                                    className="btn btn-outline-warning btn-sm"
-                                    onClick={() => handleToggle(task)}
-                                    title="Réouvrir"
-                                >
-                                    <i className="fa fa-undo" />
-                                </button>
+                <div className="col-md-6 mb-3">
+                    <div className="kanban-col">
+                        <div className="kanban-col-header">Terminées ({done.length})</div>
+                        {done.length === 0 && (
+                            <div className="empty-state py-3">
+                                <div className="empty-icon" style={{ fontSize: '1.8rem' }}>🎯</div>
+                                <p className="empty-text mb-0">Aucune tâche terminée</p>
                             </div>
-                        </div>
-                    ))}
-                    {done.length === 0 && <p className="text-muted text-center small">Aucune terminée</p>}
+                        )}
+                        {done.map(task => (
+                            <div key={task.id} className="item task-card task-done">
+                                <span className="task-name">{task.name}</span>
+                                <div className="task-actions">
+                                    <button
+                                        className="btn btn-link btn-sm text-muted p-0"
+                                        onClick={() => toggleTask(task)}
+                                        aria-label="Mark item as incomplete"
+                                        title="Reopen"
+                                    >
+                                        <i className="far fa-check-square" />
+                                    </button>
+                                    <button
+                                        className="btn btn-link btn-sm text-danger p-0"
+                                        onClick={() => deleteTask(task)}
+                                        aria-label="Remove Item"
+                                        title="Remove"
+                                    >
+                                        <i className="fa fa-trash" />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
-        </>
+        </div>
     );
 }

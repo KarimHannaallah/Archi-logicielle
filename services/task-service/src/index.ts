@@ -3,7 +3,7 @@ import { createAuthService } from './domain/AuthService';
 import { createApp } from './app';
 import { createInMemoryUserRepository } from './persistence/userInmemory';
 import { createSqliteUserRepository } from './persistence/userSqlite';
-import { createEventPublisher } from './infra/eventBus';
+import { publishEvent } from './infra/eventBus';
 
 // --- Composition root : choix de l'adapter selon l'environnement ---
 function resolveAdapter() {
@@ -19,14 +19,13 @@ function resolveUserAdapter() {
 
 const adapter = resolveAdapter();
 const userAdapter = resolveUserAdapter();
-const eventPublisher = createEventPublisher();
-const todoService = createTodoService(adapter, eventPublisher);
+const todoService = createTodoService(adapter, publishEvent);
 const authService = createAuthService(userAdapter);
 const app = createApp(todoService, { authService, enableAuth: true });
 
 Promise.all([adapter.init(), userAdapter.init()]).then(() => {
     const port = process.env.PORT || 3000;
-    app.listen(port, () => console.log(`Listening on port ${port}`));
+    app.listen(port, () => console.log(`[task-service] Listening on port ${port}`));
 }).catch((err: Error) => {
     console.error(err);
     process.exit(1);
