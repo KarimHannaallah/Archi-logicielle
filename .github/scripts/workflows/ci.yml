@@ -56,3 +56,57 @@ jobs:
           cache: npm
       - run: npm ci -w frontend
       - run: npm run build -w frontend
+  
+docker-build:
+    needs: [build-services, build-frontend]
+    if: always() && !failure()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build task-service image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: services/task-service/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: task-service:${{ github.sha }}
+
+      - name: Build project-service image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: services/project-service/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: project-service:${{ github.sha }}
+
+      - name: Build notification-service image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: services/notification-service/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: notification-service:${{ github.sha }}
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: frontend/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: frontend:${{ github.sha }}
