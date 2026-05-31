@@ -1,0 +1,21 @@
+{
+  "name": "kanban-app",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "services/task-service",
+    "services/project-service",
+    "services/notification-service"
+  ],
+   "overrides": {
+    "ansi-regex": "5.0.1"
+  },
+  "scripts": {
+    "test": "npm test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
