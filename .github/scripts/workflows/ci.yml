@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev, 'feature/**']
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      task-service: ${{ steps.changes.outputs.task-service }}
+      project-service: ${{ steps.changes.outputs.project-service }}
+      notification-service: ${{ steps.changes.outputs.notification-service }}
+      frontend: ${{ steps.changes.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: Detect changed services
+        id: changes
+        run: bash .github/scripts/detect-changes.sh
+
+  build-services:
+    needs: detect-changes
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - service: task-service
+            changed: ${{ needs.detect-changes.outputs.task-service }}
+          - service: project-service
+            changed: ${{ needs.detect-changes.outputs.project-service }}
+          - service: notification-service
+            changed: ${{ needs.detect-changes.outputs.notification-service }}
+    if: ${{ matrix.changed == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci -w services/${{ matrix.service }}
+      - run: npm test -w services/${{ matrix.service }}
+
+  build-frontend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci -w frontend
+      - run: npm run build -w frontend
