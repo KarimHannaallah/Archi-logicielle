@@ -63,7 +63,7 @@ jobs:
           REDIS_PORT: "6380"
           PORT: "3000"
       - name: Start project-service
-        run: npx ts-node services/project-service/src/index.ts &
+        run: npx ts-node --transpile-only services/project-service/src/index.ts &
         env:
           USE_INMEMORY: "true"
           JWT_SECRET: "change-me-in-production"
@@ -71,16 +71,17 @@ jobs:
           REDIS_PORT: "6380"
           PORT: "3002"
       - name: Start notification-service
-        run: npx ts-node services/notification-service/src/index.ts &
+        run: npx ts-node --transpile-only services/notification-service/src/index.ts &
         env:
           JWT_SECRET: "change-me-in-production"
           REDIS_HOST: localhost
           REDIS_PORT: "6380"
           PORT: "3003"
       - name: Wait for services
-        run: sleep 10
+        run: sleep 20
       - name: Run E2E tests
         run: npm run test:e2e -w frontend
+        timeout-minutes: 10
         env:
           CI: "true"
       - name: Upload E2E results
