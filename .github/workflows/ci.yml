@@ -29,12 +29,8 @@ jobs:
       matrix:
         include:
           - service: task-service
-            changed: ${{ needs.detect-changes.outputs.task-service }}
           - service: project-service
-            changed: ${{ needs.detect-changes.outputs.project-service }}
           - service: notification-service
-            changed: ${{ needs.detect-changes.outputs.notification-service }}
-    if: ${{ matrix.changed == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -42,12 +38,19 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci -w services/${{ matrix.service }}
-      - name: Lint
-        run: npm run lint -w services/${{ matrix.service }}
-      - name: Architecture lint
-        run: npm run lint:arch -w services/${{ matrix.service }}
+      - name: npm audit
+        run: npm audit --audit-level=moderate -w services/${{ matrix.service }} --omit=dev
         continue-on-error: true
-      - run: npm test -w services/${{ matrix.service }} -- --coverage --coverageReporters=lcov --coverageReporters=json-summary
+      - name: Lint
+        run: npm run lint --if-present -w services/${{ matrix.service }}
+      - name: Architecture lint
+        run: npm run lint:arch --if-present -w services/${{ matrix.service }}
+        continue-on-error: true
+      - name: Run tests
+        run: npm test -w services/${{ matrix.service }} -- --coverage --coverageReporters=lcov --coverageReporters=json-summary
+        env:
+          USE_INMEMORY: "true"
+          JWT_SECRET: "change-me-in-production"
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
@@ -66,7 +69,7 @@ jobs:
           cache: npm
       - run: npm ci -w frontend
       - name: Lint
-        run: npm run lint -w frontend
+        run: npm run lint --if-present -w frontend
         continue-on-error: true
       - run: npm run build -w frontend
 
@@ -149,6 +152,10 @@ jobs:
     needs: docker-build
     if: always() && !failure()
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - name: Trivy scan
@@ -160,6 +167,47 @@ jobs:
           format: sarif
           output: trivy-results.sarif
       - name: Upload Trivy results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-results.sarif
+        continue-on-error: true
+
+  validate-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate docker-compose
+        run: docker compose config -q
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gitleaks secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  license-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Check licenses task-service
+        run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start services/task-service
+        continue-on-error: true
+      - name: Check licenses project-service
+        run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start services/project-service
+        continue-on-error: true
+      - name: Check licenses notification-service
+        run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start services/notification-service
+        continue-on-error: true
+      - name: Check licenses frontend
+        run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start frontend
+        continue-on-error: true

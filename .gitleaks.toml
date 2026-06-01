@@ -1,0 +1,11 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowlist"
+paths = [
+    ".env.example",
+    "services/task-service/.env.example",
+    "services/project-service/.env.example",
+    "services/notification-service/.env.example"
+]

@@ -3,10 +3,14 @@ FROM node:24-alpine
 WORKDIR /app
 
 COPY package.json package-lock.json ./
+COPY services/notification-service/package.json services/notification-service/
+
 RUN npm ci --omit=dev
 
-COPY src/ ./src/
-COPY tsconfig.json ./
+COPY services/notification-service/src/ services/notification-service/src/
+COPY services/notification-service/tsconfig.json services/notification-service/
+
+WORKDIR /app/services/notification-service
 
 EXPOSE 3003
 

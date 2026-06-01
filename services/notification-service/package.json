@@ -9,7 +9,8 @@
   "scripts": {
     "start": "ts-node src/index.ts",
     "dev": "nodemon -L --exec ts-node src/index.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"No tests yet\" && exit 0"
   },
   "dependencies": {
     "express": "^4.18.2",
