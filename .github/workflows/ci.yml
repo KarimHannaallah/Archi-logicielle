@@ -152,6 +152,10 @@ jobs:
     needs: docker-build
     if: always() && !failure()
     runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - name: Trivy scan
@@ -163,9 +167,10 @@ jobs:
           format: sarif
           output: trivy-results.sarif
       - name: Upload Trivy results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-results.sarif
+        continue-on-error: true
 
   validate-compose:
     runs-on: ubuntu-latest
