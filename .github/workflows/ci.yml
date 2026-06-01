@@ -46,7 +46,11 @@ jobs:
       - name: Architecture lint
         run: npm run lint:arch --if-present -w services/${{ matrix.service }}
         continue-on-error: true
-      - run: npm test -w services/${{ matrix.service }} -- --coverage --coverageReporters=lcov --coverageReporters=json-summary
+      - name: Run tests
+        run: npm test -w services/${{ matrix.service }} -- --coverage --coverageReporters=lcov --coverageReporters=json-summary
+        env:
+          USE_INMEMORY: "true"
+          JWT_SECRET: "change-me-in-production"
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
