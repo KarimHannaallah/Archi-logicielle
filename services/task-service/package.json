@@ -35,7 +35,8 @@
       "ts",
       "js",
       "json"
-    ]
+    ],
+    "collectCoverageFrom": ["src/**/*.ts", "!src/**/*.d.ts"]
   },
   "prettier": {
     "trailingComma": "all",
