@@ -44,14 +44,16 @@ conditionalDescribe('MySQL persistence (TodoRepository interface)', () => {
     beforeEach(async () => {
         // Nettoyer la table avant chaque test
         await new Promise((resolve, reject) => {
-            db._pool
-                ? db._pool.query('DELETE FROM todo_items', (err) => (err ? reject(err) : resolve()))
-                : resolve(); // fallback si _pool non exposé : on continue
+            if (db._pool) {
+                db._pool.query('DELETE FROM todo_items', (err) => (err ? reject(err) : resolve()));
+            } else {
+                resolve();
+            }
         }).catch(() => {
             // Si _pool n'est pas exposé on ignore, les tests de getAll vérifieront quand même
         });
         // Alternative : recréer via l'API publique (supprimer l'item s'il existe)
-        try { await db.remove(ITEM.id); } catch (_e) {}
+        try { await db.remove(ITEM.id); } catch (_e) { /* ignore */ }
     });
 
     test('it initializes correctly (connexion et création de table)', async () => {
