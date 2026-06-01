@@ -34,7 +34,6 @@ jobs:
             changed: ${{ needs.detect-changes.outputs.project-service }}
           - service: notification-service
             changed: ${{ needs.detect-changes.outputs.notification-service }}
-    if: ${{ matrix.changed == 'true' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
