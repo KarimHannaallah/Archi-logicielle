@@ -1,0 +1,100 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Run task-service tests
+        run: npm test -w services/task-service -- --coverage --coverageReporters=lcov
+        env:
+          USE_INMEMORY: "true"
+          JWT_SECRET: "change-me-in-production"
+          REDIS_HOST: localhost
+      - name: Run project-service tests
+        run: npm test -w services/project-service
+        env:
+          USE_INMEMORY: "true"
+          JWT_SECRET: "change-me-in-production"
+          REDIS_HOST: localhost
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-coverage
+          path: services/task-service/coverage/
+
+  e2e-tests:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6380:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps -w frontend
+      - name: Start task-service
+        run: npm run start -w services/task-service &
+        env:
+          USE_INMEMORY: "true"
+          JWT_SECRET: "change-me-in-production"
+          REDIS_HOST: localhost
+          REDIS_PORT: "6380"
+          PORT: "3000"
+      - name: Start project-service
+        run: npx ts-node --transpile-only services/project-service/src/index.ts &
+        env:
+          USE_INMEMORY: "true"
+          JWT_SECRET: "change-me-in-production"
+          REDIS_HOST: localhost
+          REDIS_PORT: "6380"
+          PORT: "3002"
+      - name: Start notification-service
+        run: npx ts-node --transpile-only services/notification-service/src/index.ts &
+        env:
+          JWT_SECRET: "change-me-in-production"
+          REDIS_HOST: localhost
+          REDIS_PORT: "6380"
+          PORT: "3003"
+      - name: Wait for services
+        run: sleep 20
+      - name: Run E2E tests
+        run: npm run test:e2e -w frontend
+        timeout-minutes: 10
+        env:
+          CI: "true"
+      - name: Upload E2E results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results
+          path: frontend/test-results/
+
+  dependency-review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        continue-on-error: true
