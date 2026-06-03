@@ -27,6 +27,7 @@
     "wait-port": "^1.0.4"
   },
   "jest": {
+    "rootDir": ".",
     "transform": {
       "^.+\\.ts$": "ts-jest",
       "^.+\\.js$": "babel-jest"

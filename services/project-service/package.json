@@ -20,6 +20,7 @@
     "uuid": "^9.0.0"
   },
   "jest": {
+    "rootDir": ".",
     "transform": {
       "^.+\\.ts$": "ts-jest",
       "^.+\\.js$": "babel-jest"
