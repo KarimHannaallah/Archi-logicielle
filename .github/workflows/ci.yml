@@ -89,6 +89,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set lowercase repo
+        run: echo "REPO=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -110,8 +113,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
-            ghcr.io/${{ github.repository }}/task-service:latest
-            ghcr.io/${{ github.repository }}/task-service:${{ github.sha }}
+            ghcr.io/${{ env.REPO }}/task-service:latest
+            ghcr.io/${{ env.REPO }}/task-service:${{ github.sha }}
 
       - name: Build project-service image
         uses: docker/build-push-action@v5
@@ -123,8 +126,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
-            ghcr.io/${{ github.repository }}/project-service:latest
-            ghcr.io/${{ github.repository }}/project-service:${{ github.sha }}
+            ghcr.io/${{ env.REPO }}/project-service:latest
+            ghcr.io/${{ env.REPO }}/project-service:${{ github.sha }}
 
       - name: Build notification-service image
         uses: docker/build-push-action@v5
@@ -136,8 +139,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
-            ghcr.io/${{ github.repository }}/notification-service:latest
-            ghcr.io/${{ github.repository }}/notification-service:${{ github.sha }}
+            ghcr.io/${{ env.REPO }}/notification-service:latest
+            ghcr.io/${{ env.REPO }}/notification-service:${{ github.sha }}
 
       - name: Build frontend image
         uses: docker/build-push-action@v5
@@ -149,18 +152,18 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
-            ghcr.io/${{ github.repository }}/frontend:latest
-            ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}
+            ghcr.io/${{ env.REPO }}/frontend:latest
+            ghcr.io/${{ env.REPO }}/frontend:${{ github.sha }}
 
       - name: Image URLs summary
         if: github.ref == 'refs/heads/main'
         run: |
           echo "## 🐳 Images publiées sur GHCR" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- \`ghcr.io/${{ github.repository }}/task-service:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`ghcr.io/${{ github.repository }}/project-service:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`ghcr.io/${{ github.repository }}/notification-service:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`ghcr.io/${{ github.repository }}/frontend:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`ghcr.io/${{ env.REPO }}/task-service:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`ghcr.io/${{ env.REPO }}/project-service:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`ghcr.io/${{ env.REPO }}/notification-service:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`ghcr.io/${{ env.REPO }}/frontend:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
 
   hadolint:
     runs-on: ubuntu-latest
