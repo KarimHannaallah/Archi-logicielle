@@ -1,5 +1,12 @@
 # Todo App — Architecture Microservices Event-Driven
 
+[![CI](https://github.com/KarimHannaallah/Archi-logicielle/actions/workflows/ci.yml/badge.svg)](https://github.com/KarimHannaallah/Archi-logicielle/actions/workflows/ci.yml)
+[![CI](https://github.com/KarimHannaallah/Archi-logicielle/actions/workflows/ci.yml/badge.svg)](https://github.com/KarimHannaallah/Archi-logicielle/actions/workflows/ci.yml)
+[![Nightly](https://github.com/KarimHannaallah/Archi-logicielle/actions/workflows/nightly.yml/badge.svg)](https://github.com/KarimHannaallah/Archi-logicielle/actions/workflows/nightly.yml)
+[![CodeQL](https://github.com/KarimHannaallah/Archi-logicielle/actions/workflows/codeql.yml/badge.svg)](https://github.com/KarimHannaallah/Archi-logicielle/actions/workflows/codeql.yml)
+[![CodeQL](https://github.com/KarimHannaallah/Archi-logicielle/actions/workflows/codeql.yml/badge.svg)](https://github.com/KarimHannaallah/Archi-logicielle/actions/workflows/codeql.yml)
+[![Node](https://img.shields.io/badge/node-%3E%3D24-brightgreen)](https://nodejs.org)
+
 Application Todo fullstack avec authentification, gestion de projets et notifications
 en temps quasi-réel via Redis Pub/Sub.
 
@@ -169,15 +176,75 @@ Deux suites de tests :
 | `e2e/todo.spec.ts` | CRUD tâches, auth (10 scénarios) | Non (events ignorés) |
 | `e2e/project-workflow.spec.ts` | Workflow complet event-driven (3 scénarios) | Oui (démarré auto) |
 
+## CI/CD
+
+Documentation complète : [docs/CI.md](docs/CI.md)
+
+| Pipeline | Déclenchement | Rôle |
+|----------|--------------|------|
+| `ci.yml` | push / PR | Build · tests · lint · sécurité · Docker push |
+| `nightly.yml` | 02:00 UTC | Intégration · E2E · dependency review |
+| `codeql.yml` | push main / PR / hebdo | Analyse statique de sécurité |
+
+### Lancer les checks en local
+
+```bash
+# Tests unitaires (tous les workspaces)
+npm test --workspaces --if-present
+
+# Tests d'un service avec couverture
+npm test -w services/task-service -- --coverage
+
+# Tests E2E Playwright (nécessite Redis sur :6380)
+docker run -d -p 6380:6379 redis:7-alpine
+npm run test:e2e -w frontend
+
+# Lint (tous les workspaces)
+npm run lint --workspaces --if-present
+
+# Lint d'architecture
+npm run lint:arch -w services/task-service
+npm run lint:arch -w services/project-service
+
+# Détection de secrets
+gitleaks detect --config .gitleaks.toml --verbose
+
+# Scan de licences
+license-checker --production --start services/task-service
+
+# Lint Dockerfile
+docker run --rm -i hadolint/hadolint < services/task-service/Dockerfile
+
+# Validation docker-compose
+docker compose config -q
+```
+
+### Images Docker
+
+Les images sont publiées automatiquement sur GHCR à chaque merge sur `main` :
+
+```
+ghcr.io/karimhannaallah/Archi-logicielle/task-service:latest
+ghcr.io/karimhannaallah/Archi-logicielle/project-service:latest
+ghcr.io/karimhannaallah/Archi-logicielle/notification-service:latest
+ghcr.io/karimhannaallah/Archi-logicielle/frontend:latest
+```
+
+```bash
+# Lancer depuis le registry (sans builder localement)
+docker compose pull && docker compose up
+```
+
 ## Architecture
 
 Voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) pour les diagrammes complets.
 
 ```
-projet-archi/
+Archi-logicielle/
 ├── docker-compose.yml              # Lancement 1 commande
 ├── docs/
 │   ├── ARCHITECTURE.md             # Architecture complète (Partie 1 + Partie 2)
+│   ├── CI.md                       # Pipeline CI/CD (GitHub Actions)
 │   ├── adr/
 │   │   ├── ADR-001-ports-and-adapters.md
 │   │   ├── ADR-002-separation-frontend-backend.md
