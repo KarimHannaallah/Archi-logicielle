@@ -8,7 +8,6 @@ updates:
       patch-updates:
         update-types:
           - patch
-    auto-merge: true
 
   - package-ecosystem: github-actions
     directory: /
