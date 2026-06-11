@@ -56,6 +56,12 @@ jobs:
         with:
           name: coverage-${{ matrix.service }}
           path: services/${{ matrix.service }}/coverage/
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.service }}
+          path: services/${{ matrix.service }}/test-results/
 
   build-frontend:
     needs: detect-changes
@@ -77,11 +83,25 @@ jobs:
     needs: [build-services, build-frontend]
     if: always() && !failure()
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set lowercase repo
+        run: echo "REPO=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build task-service image
         uses: docker/build-push-action@v5
@@ -89,10 +109,12 @@ jobs:
           context: .
           file: services/task-service/Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: false
+          push: ${{ github.ref == 'refs/heads/main' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          tags: task-service:${{ github.sha }}
+          tags: |
+            ghcr.io/${{ env.REPO }}/task-service:latest
+            ghcr.io/${{ env.REPO }}/task-service:${{ github.sha }}
 
       - name: Build project-service image
         uses: docker/build-push-action@v5
@@ -100,10 +122,12 @@ jobs:
           context: .
           file: services/project-service/Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: false
+          push: ${{ github.ref == 'refs/heads/main' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          tags: project-service:${{ github.sha }}
+          tags: |
+            ghcr.io/${{ env.REPO }}/project-service:latest
+            ghcr.io/${{ env.REPO }}/project-service:${{ github.sha }}
 
       - name: Build notification-service image
         uses: docker/build-push-action@v5
@@ -111,10 +135,12 @@ jobs:
           context: .
           file: services/notification-service/Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: false
+          push: ${{ github.ref == 'refs/heads/main' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          tags: notification-service:${{ github.sha }}
+          tags: |
+            ghcr.io/${{ env.REPO }}/notification-service:latest
+            ghcr.io/${{ env.REPO }}/notification-service:${{ github.sha }}
 
       - name: Build frontend image
         uses: docker/build-push-action@v5
@@ -122,10 +148,22 @@ jobs:
           context: .
           file: frontend/Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: false
+          push: ${{ github.ref == 'refs/heads/main' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          tags: frontend:${{ github.sha }}
+          tags: |
+            ghcr.io/${{ env.REPO }}/frontend:latest
+            ghcr.io/${{ env.REPO }}/frontend:${{ github.sha }}
+
+      - name: Image URLs summary
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "## 🐳 Images publiées sur GHCR" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- \`ghcr.io/${{ env.REPO }}/task-service:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`ghcr.io/${{ env.REPO }}/project-service:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`ghcr.io/${{ env.REPO }}/notification-service:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`ghcr.io/${{ env.REPO }}/frontend:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
 
   hadolint:
     runs-on: ubuntu-latest
@@ -211,6 +249,7 @@ jobs:
       - name: Check licenses frontend
         run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start frontend
         continue-on-error: true
+
   pipeline-summary:
     needs: [build-services, build-frontend, docker-build, hadolint, trivy, validate-compose, gitleaks, license-check]
     if: always()
@@ -218,7 +257,7 @@ jobs:
     steps:
       - name: Pipeline Summary
         run: |
-          echo "## Pipeline CI — Résumé" >> $GITHUB_STEP_SUMMARY
+          echo "## 🚀 Pipeline CI — Résumé" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
