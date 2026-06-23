@@ -43,7 +43,7 @@ async function init(): Promise<void> {
 
     return new Promise((acc, rej) => {
         pool.query(
-            'CREATE TABLE IF NOT EXISTS todo_items (id varchar(36), name varchar(255), completed boolean, project_id varchar(36) DEFAULT "")',
+            'CREATE TABLE IF NOT EXISTS todo_items (id varchar(36), name varchar(255), completed boolean, user_id varchar(36), project_id varchar(36) DEFAULT \'\')',
             (err: Error | null) => {
                 if (err) return rej(err);
                 console.log(`Connected to mysql db at host ${host}`);
@@ -107,8 +107,8 @@ async function getById(id: string): Promise<TodoItem | undefined> {
 async function add(item: TodoItem): Promise<void> {
     return new Promise((acc, rej) => {
         pool.query(
-            'INSERT INTO todo_items (id, name, completed, project_id) VALUES (?, ?, ?, ?)',
-            [item.id, item.name, item.completed ? 1 : 0, item.projectId || ''],
+            'INSERT INTO todo_items (id, name, completed, user_id, project_id) VALUES (?, ?, ?, ?, ?)',
+            [item.id, item.name, item.completed ? 1 : 0, item.userId || null, item.projectId || ''],
             (err: Error | null) => {
                 if (err) return rej(err);
                 acc();
