@@ -5,7 +5,9 @@ services:
       - "6379:6379"
 
   task-service:
-    build: ./services/task-service
+    build:
+      context: .
+      dockerfile: services/task-service/Dockerfile
     ports:
       - "3000:3000"
     env_file:
@@ -23,7 +25,9 @@ services:
       - redis
 
   project-service:
-    build: ./services/project-service
+    build:
+      context: .
+      dockerfile: services/project-service/Dockerfile
     ports:
       - "3002:3002"
     env_file:
@@ -40,7 +44,9 @@ services:
       - redis
 
   notification-service:
-    build: ./services/notification-service
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
     ports:
       - "3003:3003"
     env_file:
@@ -54,7 +60,9 @@ services:
       - redis
 
   frontend:
-    build: ./frontend
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
     ports:
       - "80:80"
     depends_on:
