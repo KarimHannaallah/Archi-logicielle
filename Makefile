@@ -1,4 +1,4 @@
-.PHONY: all up down clean clean-all install test test-unit test-e2e wait-mysql logs
+.PHONY: all up down clean clean-all install test test-unit test-e2e wait-mysql logs down
 
 # ── Cible par défaut : tout lancer ────────────────────────────────────────────
 all: up
@@ -50,3 +50,6 @@ clean:
 # ── Nettoyage complet : conteneurs + volumes (supprime toutes les données) ────
 clean-all:
 	docker compose --profile mysql down -v --remove-orphans
+# ── Supprimer conteneurs + volumes + images ───────────────────────────────────
+down:
+	docker compose --profile mysql down -v --rmi all --remove-orphans
