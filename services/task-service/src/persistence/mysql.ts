@@ -81,6 +81,7 @@ async function getAll(userId?: string, projectId?: string): Promise<TodoItem[]> 
                     Object.assign({}, item, {
                         completed: item.completed === 1,
                         projectId: item.project_id || '',
+                        userId: item.user_id || '',
                     }),
                 ),
             );
@@ -97,6 +98,7 @@ async function getById(id: string): Promise<TodoItem | undefined> {
                     Object.assign({}, item, {
                         completed: item.completed === 1,
                         projectId: item.project_id || '',
+                        userId: item.user_id || '',
                     }),
                 )[0],
             );
