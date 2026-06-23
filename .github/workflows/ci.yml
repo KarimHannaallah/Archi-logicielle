@@ -62,6 +62,33 @@ jobs:
         with:
           name: test-results-${{ matrix.service }}
           path: services/${{ matrix.service }}/test-results/
+  
+  sonarqube:
+    needs: [build-services]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Run tests with coverage
+        run: |
+          npm test -w services/task-service -- --coverage --coverageReporters=lcov || true
+          npm test -w services/project-service -- --coverage --coverageReporters=lcov || true
+        env:
+          USE_INMEMORY: "true"
+          JWT_SECRET: "change-me-in-production"
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        continue-on-error: true
 
   build-frontend:
     needs: detect-changes
@@ -251,7 +278,7 @@ jobs:
         continue-on-error: true
 
   pipeline-summary:
-    needs: [build-services, build-frontend, docker-build, hadolint, trivy, validate-compose, gitleaks, license-check]
+    needs: [build-services, build-frontend, docker-build, hadolint, trivy, validate-compose, gitleaks, license-check, sonarqube]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -269,6 +296,7 @@ jobs:
           echo "| validate-compose | ${{ needs.validate-compose.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| gitleaks | ${{ needs.gitleaks.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| license-check | ${{ needs.license-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| sonarqube | ${{ needs.sonarqube.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
