@@ -31,7 +31,7 @@ test: clean-all install up wait-mysql test-unit test-e2e
 
 test-unit:
 	@echo ">>> Tests unitaires : task-service"
-	cd services/task-service && MYSQL_HOST=127.0.0.1 MYSQL_PORT=3307 MYSQL_USER=todo MYSQL_PASSWORD=todopass MYSQL_DB=todos npm test -- --forceExit
+	cd services/task-service && npx cross-env MYSQL_HOST=127.0.0.1 MYSQL_PORT=3307 MYSQL_USER=todo MYSQL_PASSWORD=todopass MYSQL_DB=todos npm test -- --forceExit
 	@echo ">>> Tests unitaires : project-service"
 	cd services/project-service && npm test -- --forceExit
 
