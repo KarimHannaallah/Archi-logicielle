@@ -28,8 +28,9 @@ async function init(): Promise<void> {
     const user = getSecret(USER, USER_FILE);
     const password = getSecret(PASSWORD, PASSWORD_FILE);
     const database = getSecret(DB, DB_FILE);
+    const port = parseInt(process.env.MYSQL_PORT || '3306');
 
-    await waitPort({ host, port: 3306, timeout: 10000, output: 'silent' });
+    await waitPort({ host, port, timeout: 10000, output: 'silent' });
 
     pool = mysql.createPool({
         connectionLimit: 5,
@@ -37,6 +38,7 @@ async function init(): Promise<void> {
         user,
         password,
         database,
+        port,
     });
 
     return new Promise((acc, rej) => {
