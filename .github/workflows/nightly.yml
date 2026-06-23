@@ -53,7 +53,8 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps -w frontend
+        run: npx playwright install --with-deps
+        working-directory: frontend
       - name: Start task-service
         run: npm run start -w services/task-service &
         env:
@@ -63,7 +64,7 @@ jobs:
           REDIS_PORT: "6380"
           PORT: "3000"
       - name: Start project-service
-        run: npx ts-node --transpile-only services/project-service/src/index.ts &
+        run: npm run start -w services/project-service &
         env:
           USE_INMEMORY: "true"
           JWT_SECRET: "change-me-in-production"
@@ -71,14 +72,14 @@ jobs:
           REDIS_PORT: "6380"
           PORT: "3002"
       - name: Start notification-service
-        run: npx ts-node --transpile-only services/notification-service/src/index.ts &
+        run: npm run start -w services/notification-service &
         env:
           JWT_SECRET: "change-me-in-production"
           REDIS_HOST: localhost
           REDIS_PORT: "6380"
           PORT: "3003"
       - name: Wait for services
-        run: sleep 20
+        run: npx wait-on http://localhost:3000/health http://localhost:3002/health http://localhost:3003/health --timeout 60000
       - name: Run E2E tests
         run: npm run test:e2e -w frontend
         timeout-minutes: 10
