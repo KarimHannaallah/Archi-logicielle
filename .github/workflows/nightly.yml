@@ -79,7 +79,7 @@ jobs:
           REDIS_PORT: "6380"
           PORT: "3003"
       - name: Wait for services
-        run: npx wait-on http://localhost:3000/health http://localhost:3002/health http://localhost:3003/health --timeout 60000
+        run: npx wait-on tcp:3000 tcp:3002 tcp:3003 --timeout 60000
       - name: Run E2E tests
         run: npm run test:e2e -w frontend
         timeout-minutes: 10
