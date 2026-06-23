@@ -39,10 +39,10 @@ echo "FRONTEND_CHANGED=${FRONTEND_CHANGED}"
 # Export to GitHub Actions environment file if available, otherwise export to shell.
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
   {
-    echo "TASK_SERVICE_CHANGED=${TASK_SERVICE_CHANGED}"
-    echo "PROJECT_SERVICE_CHANGED=${PROJECT_SERVICE_CHANGED}"
-    echo "NOTIFICATION_SERVICE_CHANGED=${NOTIFICATION_SERVICE_CHANGED}"
-    echo "FRONTEND_CHANGED=${FRONTEND_CHANGED}"
+    echo "task-service=${TASK_SERVICE_CHANGED}" >> "${GITHUB_OUTPUT}"
+    echo "project-service=${PROJECT_SERVICE_CHANGED}" >> "${GITHUB_OUTPUT}"
+    echo "notification-service=${NOTIFICATION_SERVICE_CHANGED}" >> "${GITHUB_OUTPUT}"
+    echo "frontend=${FRONTEND_CHANGED}" >> "${GITHUB_OUTPUT}"
   } >> "${GITHUB_OUTPUT}"
 else
   export TASK_SERVICE_CHANGED
