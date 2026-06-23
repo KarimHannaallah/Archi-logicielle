@@ -37,7 +37,7 @@ test-unit:
 
 test-e2e:
 	@echo ">>> Tests E2E : frontend (Playwright)"
-	cd frontend && USE_DOCKER_STACK=1 npx playwright test
+	cd frontend && npx cross-env USE_DOCKER_STACK=1 npx playwright test
 
 # ── Logs en live ──────────────────────────────────────────────────────────────
 logs:
