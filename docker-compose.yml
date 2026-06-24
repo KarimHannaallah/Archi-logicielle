@@ -3,9 +3,16 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   task-service:
-    build: ./services/task-service
+    build:
+      context: .
+      dockerfile: services/task-service/Dockerfile
     ports:
       - "3000:3000"
     env_file:
@@ -20,10 +27,13 @@ services:
     volumes:
       - task-data:/data
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
 
   project-service:
-    build: ./services/project-service
+    build:
+      context: .
+      dockerfile: services/project-service/Dockerfile
     ports:
       - "3002:3002"
     env_file:
@@ -37,10 +47,13 @@ services:
     volumes:
       - project-data:/data
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
 
   notification-service:
-    build: ./services/notification-service
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
     ports:
       - "3003:3003"
     env_file:
@@ -51,10 +64,13 @@ services:
       - PORT=3003
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
 
   frontend:
-    build: ./frontend
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
     ports:
       - "80:80"
     depends_on:
@@ -62,11 +78,6 @@ services:
       - project-service
       - notification-service
 
-  # ── MySQL optionnel ────────────────────────────────────────────────────────
-  # Pour basculer task-service sur MySQL :
-  #   1. Décommenter MYSQL_HOST=mysql dans .env
-  #   2. Relancer : docker compose up --build task-service
-  #
   mysql:
     image: mysql:8
     profiles: ["mysql"]
@@ -76,11 +87,12 @@ services:
       MYSQL_USER: ${MYSQL_USER:-todo}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-todopass}
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${MYSQL_USER:-todo}", "-p${MYSQL_PASSWORD:-todopass}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-utodo", "-ptodopass"]
       interval: 5s
       timeout: 5s
       retries: 10

@@ -28,8 +28,9 @@ async function init(): Promise<void> {
     const user = getSecret(USER, USER_FILE);
     const password = getSecret(PASSWORD, PASSWORD_FILE);
     const database = getSecret(DB, DB_FILE);
+    const port = Number.parseInt(process.env.MYSQL_PORT || '3306');
 
-    await waitPort({ host, port: 3306, timeout: 10000, output: 'silent' });
+    await waitPort({ host, port, timeout: 10000, output: 'silent' });
 
     pool = mysql.createPool({
         connectionLimit: 5,
@@ -37,11 +38,12 @@ async function init(): Promise<void> {
         user,
         password,
         database,
+        port,
     });
 
     return new Promise((acc, rej) => {
         pool.query(
-            'CREATE TABLE IF NOT EXISTS todo_items (id varchar(36), name varchar(255), completed boolean, project_id varchar(36) DEFAULT "")',
+            'CREATE TABLE IF NOT EXISTS todo_items (id varchar(36), name varchar(255), completed boolean, user_id varchar(36), project_id varchar(36) DEFAULT \'\')',
             (err: Error | null) => {
                 if (err) return rej(err);
                 console.log(`Connected to mysql db at host ${host}`);
@@ -79,6 +81,7 @@ async function getAll(userId?: string, projectId?: string): Promise<TodoItem[]> 
                     Object.assign({}, item, {
                         completed: item.completed === 1,
                         projectId: item.project_id || '',
+                        userId: item.user_id || '',
                     }),
                 ),
             );
@@ -95,6 +98,7 @@ async function getById(id: string): Promise<TodoItem | undefined> {
                     Object.assign({}, item, {
                         completed: item.completed === 1,
                         projectId: item.project_id || '',
+                        userId: item.user_id || '',
                     }),
                 )[0],
             );
@@ -105,8 +109,8 @@ async function getById(id: string): Promise<TodoItem | undefined> {
 async function add(item: TodoItem): Promise<void> {
     return new Promise((acc, rej) => {
         pool.query(
-            'INSERT INTO todo_items (id, name, completed, project_id) VALUES (?, ?, ?, ?)',
-            [item.id, item.name, item.completed ? 1 : 0, item.projectId || ''],
+            'INSERT INTO todo_items (id, name, completed, user_id, project_id) VALUES (?, ?, ?, ?, ?)',
+            [item.id, item.name, item.completed ? 1 : 0, item.userId || null, item.projectId || ''],
             (err: Error | null) => {
                 if (err) return rej(err);
                 acc();

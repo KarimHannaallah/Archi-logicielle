@@ -1,10 +1,22 @@
-.PHONY: all up down clean clean-all install test test-unit test-e2e wait-mysql logs
+.PHONY: all up down clean clean-all install test test-unit test-e2e wait-mysql logs check-env
 
-# ── Cible par défaut : tout lancer ────────────────────────────────────────────
+# ── Vérification du fichier .env ──────────────────────────────────────────────
+check-env:
+	@if [ ! -f .env ]; then \
+		echo ""; \
+		echo "  ❌ Fichier .env manquant."; \
+		echo "  Copier l'exemple et adapter :"; \
+		echo ""; \
+		echo "    cp .env.example .env"; \
+		echo ""; \
+		exit 1; \
+	fi
+
+# ── Cible par défaut ──────────────────────────────────────────────────────────
 all: up
 
-up:
-	docker compose up --build -d
+up: check-env
+	docker compose --profile mysql up --build -d
 	@echo ""
 	@echo "  Frontend  → http://localhost"
 	@echo "  Tasks     → http://localhost:3000"
@@ -12,41 +24,45 @@ up:
 	@echo "  Notifs    → http://localhost:3003"
 	@echo ""
 
-# ── Installer les dépendances (dont devDeps pour les tests) ──────────────────
+# ── Installer les dépendances ─────────────────────────────────────────────────
 install:
 	cd services/task-service && npm install
 	cd services/project-service && npm install
 	cd services/notification-service && npm install
 	cd frontend && npm install
 
-# ── Attendre que MySQL accepte une vraie requête SQL (pas juste un ping TCP)
-# La boucle tourne dans le conteneur Linux pour éviter les problèmes Windows
+# ── Attendre que MySQL soit prêt ──────────────────────────────────────────────
 wait-mysql:
 	@echo ">>> Attente MySQL..."
 	docker compose exec -T mysql sh -c "until mysql -utodo -ptodopass todos -e 'SELECT 1' >/dev/null 2>&1; do printf '.'; sleep 2; done"
 	@echo ">>> MySQL OK"
 
-# ── Tests : clean-all + up + unit + e2e ──────────────────────────────────────
-test: clean-all install up wait-mysql test-unit test-e2e
-
+# ── Tests unitaires ───────────────────────────────────────────────────────────
 test-unit:
 	@echo ">>> Tests unitaires : task-service"
-	cd services/task-service && npx cross-env MYSQL_HOST=localhost MYSQL_USER=todo MYSQL_PASSWORD=todopass MYSQL_DB=todos npm test -- --forceExit
+	cd services/task-service && npx cross-env MYSQL_HOST=127.0.0.1 MYSQL_PORT=3307 MYSQL_USER=todo MYSQL_PASSWORD=todopass MYSQL_DB=todos npm test -- --forceExit
 	@echo ">>> Tests unitaires : project-service"
 	cd services/project-service && npm test -- --forceExit
 
+# ── Tests E2E Playwright ──────────────────────────────────────────────────────
 test-e2e:
 	@echo ">>> Tests E2E : frontend (Playwright)"
 	cd frontend && npx cross-env USE_DOCKER_STACK=1 npx playwright test
 
+# ── Suite complète ────────────────────────────────────────────────────────────
+test: check-env clean-all install up wait-mysql test-unit test-e2e
+
 # ── Logs en live ──────────────────────────────────────────────────────────────
-logs:
-	docker compose logs -f
+logs: check-env
+	docker compose --profile mysql logs -f
 
-# ── Arrêter les conteneurs sans supprimer les données ─────────────────────────
-clean:
-	docker compose down --remove-orphans
+# ── Arrêter les conteneurs ────────────────────────────────────────────────────
+clean: check-env
+	docker compose --profile mysql down --remove-orphans
 
-# ── Nettoyage complet : conteneurs + volumes (supprime toutes les données) ────
-clean-all:
-	docker compose down -v --remove-orphans
+clean-all: check-env
+	docker compose --profile mysql down -v --remove-orphans
+
+# ── Supprimer conteneurs + volumes + images ───────────────────────────────────
+down: check-env
+	docker compose --profile mysql down -v --rmi all --remove-orphans
