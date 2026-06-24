@@ -28,7 +28,7 @@ async function init(): Promise<void> {
     const user = getSecret(USER, USER_FILE);
     const password = getSecret(PASSWORD, PASSWORD_FILE);
     const database = getSecret(DB, DB_FILE);
-    const port = parseInt(process.env.MYSQL_PORT || '3306');
+    const port = Number.parseInt(process.env.MYSQL_PORT || '3306');
 
     await waitPort({ host, port, timeout: 10000, output: 'silent' });
 
