@@ -20,12 +20,14 @@ up: check-env
 	@echo ""
 	@echo "  Frontend  → http://localhost"
 	@echo "  Tasks     → http://localhost:3000"
+	@echo "  Auth	   → http://localhost:3001"
 	@echo "  Projects  → http://localhost:3002"
 	@echo "  Notifs    → http://localhost:3003"
 	@echo ""
 
 # ── Installer les dépendances ─────────────────────────────────────────────────
 install:
+	cd services/auth-service && npm install
 	cd services/task-service && npm install
 	cd services/project-service && npm install
 	cd services/notification-service && npm install
@@ -39,13 +41,15 @@ wait-mysql:
 
 # ── Tests unitaires ───────────────────────────────────────────────────────────
 test-unit:
+	@echo ">>> Tests unitaires : auth-service"
+	cd services/auth-service && npm test -- --forceExit
 	@echo ">>> Tests unitaires : task-service"
 	cd services/task-service && npx cross-env MYSQL_HOST=127.0.0.1 MYSQL_PORT=3307 MYSQL_USER=todo MYSQL_PASSWORD=todopass MYSQL_DB=todos npm test -- --forceExit
 	@echo ">>> Tests unitaires : project-service"
 	cd services/project-service && npm test -- --forceExit
 
 # ── Tests E2E Playwright ──────────────────────────────────────────────────────
-test-e2e:
+test-e2e: up
 	@echo ">>> Tests E2E : frontend (Playwright)"
 	cd frontend && npx cross-env USE_DOCKER_STACK=1 npx playwright test
 
