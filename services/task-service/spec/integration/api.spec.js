@@ -142,4 +142,17 @@ describe('API Integration Tests', () => {
             expect(items.body.length).toBe(0);
         });
     });
+
+    describe('App — enableAuth: false', () => {
+        const { createTodoService: createService } = require('../../src/domain/TodoService');
+        const repoNoAuth = require('../../src/persistence/inmemory');
+        const { createApp: makeApp } = require('../../src/app');
+        const serviceNoAuth = createService(repoNoAuth);
+        const appNoAuth = makeApp(serviceNoAuth, { enableAuth: false });
+
+        test('GET /items sans auth retourne 200', async () => {
+            const res = await request(appNoAuth).get('/items');
+            expect(res.status).toBe(200);
+        });
+    });
 });
