@@ -17,6 +17,8 @@
     "ioredis": "^5.3.2",
     "jsonwebtoken": "^9.0.2",
     "ts-node": "^10.9.2",
+    "express-rate-limit": "^7.5.0",
+    "@archi/shared-auth": "1.0.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

@@ -9,6 +9,29 @@ services:
       timeout: 3s
       retries: 5
 
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    ports:
+      - "3001:3001"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - SQLITE_DB_LOCATION=/data/auth.db
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - CORS_ORIGIN=http://localhost
+      - PORT=3001
+    volumes:
+      - auth-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+
   task-service:
     build:
       context: .
@@ -22,12 +45,15 @@ services:
       - SQLITE_DB_LOCATION=/data/task.db
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - CORS_ORIGIN=http://localhost
+      - AUTH_SERVICE_URL=http://auth-service:3001
       - PORT=3000
       - REDIS_HOST=redis
     volumes:
       - task-data:/data
     depends_on:
       redis:
+        condition: service_healthy
+      auth-service:
         condition: service_healthy
 
   project-service:
@@ -42,12 +68,15 @@ services:
     environment:
       - SQLITE_DB_LOCATION=/data/project.db
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - AUTH_SERVICE_URL=http://auth-service:3001
       - PORT=3002
       - REDIS_HOST=redis
     volumes:
       - project-data:/data
     depends_on:
       redis:
+        condition: service_healthy
+      auth-service:
         condition: service_healthy
 
   notification-service:
@@ -61,10 +90,13 @@ services:
         required: false
     environment:
       - REDIS_HOST=redis
+      - AUTH_SERVICE_URL=http://auth-service:3001
       - PORT=3003
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
     depends_on:
       redis:
+        condition: service_healthy
+      auth-service:
         condition: service_healthy
 
   frontend:
@@ -74,9 +106,14 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - task-service
-      - project-service
-      - notification-service
+      auth-service:
+        condition: service_healthy
+      task-service:
+        condition: service_started
+      project-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
 
   mysql:
     image: mysql:8
@@ -98,6 +135,7 @@ services:
       retries: 10
 
 volumes:
+  auth-data:
   task-data:
   project-data:
   mysql-data:

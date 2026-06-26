@@ -1,14 +1,34 @@
 import { Router } from 'express';
 import jwt from 'jsonwebtoken';
+import rateLimit from 'express-rate-limit';
 import type { AuthService } from '../domain/AuthService';
 import { authMiddleware } from '../middleware/auth';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
 
+// Rate limiter strict pour les routes sensibles (login, register)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    message: { error: 'Too many requests, please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => process.env.NODE_ENV === 'test',
+});
+// Rate limiter souple pour les routes authentifiées
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    message: { error: 'Too many requests, please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => process.env.NODE_ENV === 'test',
+});
+
 export function makeAuthRouter(authService: AuthService): Router {
     const router = Router();
 
-    router.post('/register', async (req, res) => {
+    router.post('/register', authLimiter, async (req, res) => {
         try {
             const { email, name, password, consent } = req.body;
             if (!email || !name || !password) {
@@ -34,7 +54,7 @@ export function makeAuthRouter(authService: AuthService): Router {
         }
     });
 
-    router.post('/login', async (req, res) => {
+    router.post('/login', authLimiter, async (req, res) => {
         try {
             const { email, password } = req.body;
             if (!email || !password) {
@@ -56,11 +76,11 @@ export function makeAuthRouter(authService: AuthService): Router {
         }
     });
 
-    router.post('/logout', (_req, res) => {
+    router.post('/logout', apiLimiter, (_req, res) => {
         res.json({ message: 'Logged out successfully' });
     });
 
-    router.get('/profile', authMiddleware, async (req: any, res) => {
+    router.get('/profile', apiLimiter, authMiddleware, async (req: any, res) => {
         try {
             const user = await authService.getProfile(req.userId);
             if (!user) {
@@ -79,7 +99,7 @@ export function makeAuthRouter(authService: AuthService): Router {
         }
     });
 
-    router.put('/profile', authMiddleware, async (req: any, res) => {
+    router.put('/profile', apiLimiter, authMiddleware, async (req: any, res) => {
         try {
             const { name, email } = req.body;
             if (!name || !email) {
@@ -107,13 +127,17 @@ export function makeAuthRouter(authService: AuthService): Router {
         }
     });
 
-    router.delete('/profile', authMiddleware, async (req: any, res) => {
+    router.delete('/profile', apiLimiter, authMiddleware, async (req: any, res) => {
         try {
             await authService.deleteAccount(req.userId);
             res.json({ message: 'Account deleted successfully' });
         } catch {
             res.status(500).json({ error: 'Internal server error' });
         }
+    });
+
+    router.get('/verify', apiLimiter, authMiddleware, (req: any, res) => {
+        res.json({ valid: true, userId: req.userId });
     });
 
     return router;

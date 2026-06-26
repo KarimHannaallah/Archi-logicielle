@@ -1,0 +1,1 @@
+export { authMiddleware } from '@archi/shared-auth';

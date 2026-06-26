@@ -2,11 +2,11 @@ FROM node:24-alpine
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY packages/shared-auth/package.json packages/shared-auth/
-COPY services/task-service/package.json services/task-service/
+COPY services/auth-service/package.json services/auth-service/
 RUN npm ci --omit=dev
 COPY packages/shared-auth/src/ packages/shared-auth/src/
-COPY services/task-service/src/ services/task-service/src/
-COPY services/task-service/tsconfig.json services/task-service/
-WORKDIR /app/services/task-service
-EXPOSE 3000
+COPY services/auth-service/src/ services/auth-service/src/
+COPY services/auth-service/tsconfig.json services/auth-service/
+WORKDIR /app/services/auth-service
+EXPOSE 3001
 CMD ["npx", "ts-node", "src/index.ts"]
