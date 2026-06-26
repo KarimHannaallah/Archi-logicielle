@@ -149,7 +149,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build auth-service image
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf
         with:
           context: .
           file: services/auth-service/Dockerfile
@@ -162,7 +162,7 @@ jobs:
             ghcr.io/${{ env.REPO }}/auth-service:${{ github.sha }}
 
       - name: Build task-service image
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf
         with:
           context: .
           file: services/task-service/Dockerfile
@@ -175,7 +175,7 @@ jobs:
             ghcr.io/${{ env.REPO }}/task-service:${{ github.sha }}
 
       - name: Build project-service image
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf
         with:
           context: .
           file: services/project-service/Dockerfile
@@ -188,7 +188,7 @@ jobs:
             ghcr.io/${{ env.REPO }}/project-service:${{ github.sha }}
 
       - name: Build notification-service image
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf
         with:
           context: .
           file: services/notification-service/Dockerfile
@@ -201,7 +201,7 @@ jobs:
             ghcr.io/${{ env.REPO }}/notification-service:${{ github.sha }}
 
       - name: Build frontend image
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf
         with:
           context: .
           file: frontend/Dockerfile
