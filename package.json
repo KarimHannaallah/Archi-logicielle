@@ -3,6 +3,7 @@
   "private": true,
   "workspaces": [
     "frontend",
+    "services/auth-service",
     "services/task-service",
     "services/project-service",
     "services/notification-service"
