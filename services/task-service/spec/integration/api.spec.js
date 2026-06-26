@@ -5,7 +5,7 @@ const { createApp } = require('../../src/app');
 // Wiring : InMemoryRepository → TodoService → App (sans auth pour les tests)
 const repo = require('../../src/persistence/inmemory');
 const todoService = createTodoService(repo);
-const app = createApp(todoService);
+const app = createApp(todoService, { enableAuth: false });
 
 beforeAll(async () => {
     await repo.init();
