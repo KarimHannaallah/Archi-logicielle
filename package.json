@@ -3,11 +3,12 @@
   "private": true,
   "workspaces": [
     "frontend",
+    "services/auth-service",
     "services/task-service",
     "services/project-service",
     "services/notification-service"
   ],
-   "overrides": {
+  "overrides": {
     "ansi-regex": "5.0.1"
   },
   "scripts": {
@@ -17,5 +18,8 @@
   },
   "engines": {
     "node": ">=24"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0"
   }
 }

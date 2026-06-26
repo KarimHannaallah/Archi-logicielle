@@ -6,7 +6,7 @@ import type { UserRepository } from '../domain/UserRepository';
 const sqlite3 = require('sqlite3').verbose();
 
 export function createSqliteUserRepository(dbLocation?: string): UserRepository & { init(): Promise<void>; teardown(): Promise<void> } {
-    const location = dbLocation || process.env.SQLITE_DB_LOCATION || '/etc/todos/todo.db';
+    const location = dbLocation || process.env.SQLITE_DB_LOCATION || '/etc/auth/auth.db';
     let db: any;
 
     return {

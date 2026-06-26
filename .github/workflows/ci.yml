@@ -13,6 +13,7 @@ jobs:
       task-service: ${{ steps.changes.outputs.task-service }}
       project-service: ${{ steps.changes.outputs.project-service }}
       notification-service: ${{ steps.changes.outputs.notification-service }}
+      auth-service: ${{ steps.changes.outputs.auth-service }}
       frontend: ${{ steps.changes.outputs.frontend }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -34,6 +35,8 @@ jobs:
             changed: ${{ needs.detect-changes.outputs.project-service }}
           - service: notification-service
             changed: ${{ needs.detect-changes.outputs.notification-service }}
+          - service: auth-service
+            changed: ${{ needs.detect-changes.outputs.auth-service }}
     steps:
       # FIX: skip tout le job si le service n'a pas changé
       - name: Skip if unchanged
@@ -96,6 +99,7 @@ jobs:
         run: |
           npm test -w services/task-service -- --coverage --coverageReporters=lcov || true
           npm test -w services/project-service -- --coverage --coverageReporters=lcov || true
+          npm test -w services/auth-service -- --coverage --coverageReporters=lcov || true
         env:
           USE_INMEMORY: "true"
           JWT_SECRET: "change-me-in-production"
@@ -104,7 +108,6 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-        continue-on-error: true
 
   build-frontend:
     needs: detect-changes
@@ -198,6 +201,19 @@ jobs:
             ghcr.io/${{ env.REPO }}/frontend:latest
             ghcr.io/${{ env.REPO }}/frontend:${{ github.sha }}
 
+      - name: Build auth-service image
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+        with:
+          context: .
+          file: services/auth-service/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.ref == 'refs/heads/main' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: |
+            ghcr.io/${{ env.REPO }}/auth-service:latest
+            ghcr.io/${{ env.REPO }}/auth-service:${{ github.sha }}
+
       - name: Image URLs summary
         if: github.ref == 'refs/heads/main'
         run: |
@@ -206,6 +222,7 @@ jobs:
           echo "- \`ghcr.io/${{ env.REPO }}/task-service:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`ghcr.io/${{ env.REPO }}/project-service:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`ghcr.io/${{ env.REPO }}/notification-service:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`ghcr.io/${{ env.REPO }}/auth-service:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`ghcr.io/${{ env.REPO }}/frontend:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
 
   hadolint:
@@ -224,6 +241,10 @@ jobs:
         uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
         with:
           dockerfile: services/notification-service/Dockerfile
+      - name: Lint auth-service Dockerfile
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
+        with:
+          dockerfile: services/auth-service/Dockerfile
       - name: Lint frontend Dockerfile
         uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
         with:
@@ -288,6 +309,9 @@ jobs:
         continue-on-error: true
       - name: Check licenses notification-service
         run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start services/notification-service
+        continue-on-error: true
+      - name: Check licenses auth-service
+        run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start services/auth-service
         continue-on-error: true
       - name: Check licenses frontend
         run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start frontend
