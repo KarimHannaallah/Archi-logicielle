@@ -9,6 +9,23 @@ services:
       timeout: 3s
       retries: 5
 
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    ports:
+      - "3001:3001"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - SQLITE_DB_LOCATION=/data/auth.db
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - CORS_ORIGIN=http://localhost
+      - PORT=3001
+    volumes:
+      - auth-data:/data
+
   task-service:
     build:
       context: .
@@ -29,6 +46,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      auth-service:
+        condition: service_started
 
   project-service:
     build:
@@ -49,6 +68,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      auth-service:
+        condition: service_started
 
   notification-service:
     build:
@@ -74,6 +95,7 @@ services:
     ports:
       - "80:80"
     depends_on:
+      - auth-service
       - task-service
       - project-service
       - notification-service
@@ -98,6 +120,7 @@ services:
       retries: 10
 
 volumes:
+  auth-data:
   task-data:
   project-data:
   mysql-data:
