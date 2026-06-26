@@ -1,7 +1,7 @@
 const request = require('supertest');
 
 // Mock authMiddleware avant tout import de app
-jest.mock('../../src/middleware/auth', () => ({
+jest.mock('@archi/shared-auth', () => ({
     authMiddleware: (_req, _res, next) => next(),
 }));
 
