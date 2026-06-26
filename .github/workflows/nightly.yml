@@ -38,7 +38,7 @@ jobs:
           JWT_SECRET: "change-me-in-production"
           REDIS_HOST: localhost
       - name: Upload coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nightly-coverage
           path: |
@@ -103,7 +103,7 @@ jobs:
           CI: "true"
       - name: Upload E2E results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-results
           path: frontend/test-results/
