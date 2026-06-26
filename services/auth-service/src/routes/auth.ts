@@ -116,5 +116,9 @@ export function makeAuthRouter(authService: AuthService): Router {
         }
     });
 
+    router.get('/verify', authMiddleware, (req: any, res) => {
+        res.json({ valid: true, userId: req.userId });
+    });
+
     return router;
 }
