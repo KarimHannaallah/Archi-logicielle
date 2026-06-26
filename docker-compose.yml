@@ -25,6 +25,12 @@ services:
       - PORT=3001
     volumes:
       - auth-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
 
   task-service:
     build:
@@ -39,6 +45,7 @@ services:
       - SQLITE_DB_LOCATION=/data/task.db
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - CORS_ORIGIN=http://localhost
+      - AUTH_SERVICE_URL=http://auth-service:3001
       - PORT=3000
       - REDIS_HOST=redis
     volumes:
@@ -47,7 +54,7 @@ services:
       redis:
         condition: service_healthy
       auth-service:
-        condition: service_started
+        condition: service_healthy
 
   project-service:
     build:
@@ -61,6 +68,7 @@ services:
     environment:
       - SQLITE_DB_LOCATION=/data/project.db
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - AUTH_SERVICE_URL=http://auth-service:3001
       - PORT=3002
       - REDIS_HOST=redis
     volumes:
@@ -69,7 +77,7 @@ services:
       redis:
         condition: service_healthy
       auth-service:
-        condition: service_started
+        condition: service_healthy
 
   notification-service:
     build:
@@ -82,10 +90,13 @@ services:
         required: false
     environment:
       - REDIS_HOST=redis
+      - AUTH_SERVICE_URL=http://auth-service:3001
       - PORT=3003
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
     depends_on:
       redis:
+        condition: service_healthy
+      auth-service:
         condition: service_healthy
 
   frontend:
@@ -95,10 +106,14 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - auth-service
-      - task-service
-      - project-service
-      - notification-service
+      auth-service:
+        condition: service_healthy
+      task-service:
+        condition: service_started
+      project-service:
+        condition: service_started
+      notification-service:
+        condition: service_started
 
   mysql:
     image: mysql:8
