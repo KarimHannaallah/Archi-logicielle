@@ -17,6 +17,7 @@
     "jsonwebtoken": "^9.0.2",
     "sqlite3": "^5.1.2",
     "ts-node": "^10.9.2",
+    "@archi/shared-auth": "1.0.0",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

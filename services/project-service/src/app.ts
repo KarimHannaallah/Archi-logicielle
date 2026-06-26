@@ -5,7 +5,7 @@ import { makeAddProject } from './routes/addProject';
 import { makeUpdateProject } from './routes/updateProject';
 import { makeDeleteProject } from './routes/deleteProject';
 import { makeGetProject } from './routes/getProject';
-import { authMiddleware } from './middleware/auth';
+import { authMiddleware } from '@archi/shared-auth';
 
 interface AppOptions {
     enableAuth?: boolean;

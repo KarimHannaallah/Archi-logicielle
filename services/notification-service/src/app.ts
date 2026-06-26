@@ -1,5 +1,5 @@
 import express from 'express';
-import { authMiddleware } from './middleware/auth';
+import { authMiddleware } from '@archi/shared-auth';
 import { makeGetNotifications } from './routes/getNotifications';
 import { makeMarkNotificationsRead } from './routes/markNotificationsRead';
 
