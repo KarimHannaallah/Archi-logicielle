@@ -20,6 +20,11 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Run auth-service tests
+        run: npm test -w services/auth-service -- --coverage --coverageReporters=lcov
+        env:
+          USE_INMEMORY: "true"
+          JWT_SECRET: "change-me-in-production"
       - name: Run task-service tests
         run: npm test -w services/task-service -- --coverage --coverageReporters=lcov
         env:
@@ -32,16 +37,13 @@ jobs:
           USE_INMEMORY: "true"
           JWT_SECRET: "change-me-in-production"
           REDIS_HOST: localhost
-      - name: Run auth-service tests
-        run: npm test -w services/auth-service -- --coverage --coverageReporters=lcov
-        env:
-          USE_INMEMORY: "true"
-          JWT_SECRET: "change-me-in-production"
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
           name: nightly-coverage
-          path: services/task-service/coverage/
+          path: |
+            services/auth-service/coverage/
+            services/task-service/coverage/
 
   e2e-tests:
     runs-on: ubuntu-latest
@@ -60,6 +62,12 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps
         working-directory: frontend
+      - name: Start auth-service
+        run: npm run start -w services/auth-service &
+        env:
+          USE_INMEMORY: "true"
+          JWT_SECRET: "change-me-in-production"
+          PORT: "3001"
       - name: Start task-service
         run: npm run start -w services/task-service &
         env:
@@ -67,13 +75,8 @@ jobs:
           JWT_SECRET: "change-me-in-production"
           REDIS_HOST: localhost
           REDIS_PORT: "6380"
+          AUTH_SERVICE_URL: "http://localhost:3001"
           PORT: "3000"
-      - name: Start auth-service
-        run: npm run start -w services/auth-service &
-        env:
-          USE_INMEMORY: "true"
-          JWT_SECRET: "change-me-in-production"
-          PORT: "3001"
       - name: Start project-service
         run: npm run start -w services/project-service &
         env:
@@ -81,6 +84,7 @@ jobs:
           JWT_SECRET: "change-me-in-production"
           REDIS_HOST: localhost
           REDIS_PORT: "6380"
+          AUTH_SERVICE_URL: "http://localhost:3001"
           PORT: "3002"
       - name: Start notification-service
         run: npm run start -w services/notification-service &
@@ -88,9 +92,10 @@ jobs:
           JWT_SECRET: "change-me-in-production"
           REDIS_HOST: localhost
           REDIS_PORT: "6380"
+          AUTH_SERVICE_URL: "http://localhost:3001"
           PORT: "3003"
       - name: Wait for services
-        run: npx wait-on tcp:3000 tcp:3002 tcp:3003 --timeout 60000
+        run: npx wait-on tcp:3001 tcp:3000 tcp:3002 tcp:3003 --timeout 60000
       - name: Run E2E tests
         run: npm run test:e2e -w frontend
         timeout-minutes: 10
