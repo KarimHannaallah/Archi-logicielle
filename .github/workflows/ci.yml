@@ -38,7 +38,6 @@ jobs:
           - service: auth-service
             changed: ${{ needs.detect-changes.outputs.auth-service }}
     steps:
-      # FIX: skip tout le job si le service n'a pas changé
       - name: Skip if unchanged
         if: matrix.changed != 'true'
         run: echo "⏭️ ${{ matrix.service }} non modifié — skippé"
@@ -149,12 +148,25 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Build auth-service image
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
+        with:
+          context: .
+          file: services/auth-service/Dockerfile
+          platforms: ${{ github.ref == 'refs/heads/main' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
+          push: ${{ github.ref == 'refs/heads/main' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          tags: |
+            ghcr.io/${{ env.REPO }}/auth-service:latest
+            ghcr.io/${{ env.REPO }}/auth-service:${{ github.sha }}
+
       - name: Build task-service image
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
         with:
           context: .
           file: services/task-service/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ github.ref == 'refs/heads/main' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           push: ${{ github.ref == 'refs/heads/main' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -167,7 +179,7 @@ jobs:
         with:
           context: .
           file: services/project-service/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ github.ref == 'refs/heads/main' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           push: ${{ github.ref == 'refs/heads/main' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -180,7 +192,7 @@ jobs:
         with:
           context: .
           file: services/notification-service/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ github.ref == 'refs/heads/main' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           push: ${{ github.ref == 'refs/heads/main' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -193,7 +205,7 @@ jobs:
         with:
           context: .
           file: frontend/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ github.ref == 'refs/heads/main' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
           push: ${{ github.ref == 'refs/heads/main' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -201,34 +213,25 @@ jobs:
             ghcr.io/${{ env.REPO }}/frontend:latest
             ghcr.io/${{ env.REPO }}/frontend:${{ github.sha }}
 
-      - name: Build auth-service image
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
-        with:
-          context: .
-          file: services/auth-service/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: ${{ github.ref == 'refs/heads/main' }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          tags: |
-            ghcr.io/${{ env.REPO }}/auth-service:latest
-            ghcr.io/${{ env.REPO }}/auth-service:${{ github.sha }}
-
       - name: Image URLs summary
         if: github.ref == 'refs/heads/main'
         run: |
           echo "## 🐳 Images publiées sur GHCR" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- \`ghcr.io/${{ env.REPO }}/auth-service:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`ghcr.io/${{ env.REPO }}/task-service:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`ghcr.io/${{ env.REPO }}/project-service:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`ghcr.io/${{ env.REPO }}/notification-service:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- \`ghcr.io/${{ env.REPO }}/auth-service:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`ghcr.io/${{ env.REPO }}/frontend:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
 
   hadolint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Lint auth-service Dockerfile
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
+        with:
+          dockerfile: services/auth-service/Dockerfile
       - name: Lint task-service Dockerfile
         uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
         with:
@@ -241,10 +244,6 @@ jobs:
         uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
         with:
           dockerfile: services/notification-service/Dockerfile
-      - name: Lint auth-service Dockerfile
-        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
-        with:
-          dockerfile: services/auth-service/Dockerfile
       - name: Lint frontend Dockerfile
         uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
         with:
@@ -301,6 +300,9 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Check licenses auth-service
+        run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start services/auth-service
+        continue-on-error: true
       - name: Check licenses task-service
         run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start services/task-service
         continue-on-error: true
@@ -309,9 +311,6 @@ jobs:
         continue-on-error: true
       - name: Check licenses notification-service
         run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start services/notification-service
-        continue-on-error: true
-      - name: Check licenses auth-service
-        run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start services/auth-service
         continue-on-error: true
       - name: Check licenses frontend
         run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start frontend
