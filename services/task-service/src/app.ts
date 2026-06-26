@@ -5,7 +5,7 @@ import { makeGetItems } from './routes/getItems';
 import { makeAddItem } from './routes/addItem';
 import { makeUpdateItem } from './routes/updateItem';
 import { makeDeleteItem } from './routes/deleteItem';
-import { authMiddleware } from './middleware/auth';
+import { authMiddleware } from '@archi/shared-auth';
 
 export function createApp(todoService: TodoService) {
     const app = express();

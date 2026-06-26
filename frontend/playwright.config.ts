@@ -6,8 +6,6 @@ const ENV = {
     NODE_ENV: 'test',
 };
 
-// Par défaut on démarre les serveurs locaux (Vite + ts-node + redis).
-// Passer USE_DOCKER_STACK=1 pour pointer sur le stack Docker (nginx :80) sans démarrer de serveurs.
 const useDocker = process.env.USE_DOCKER_STACK === '1';
 
 export default defineConfig({
@@ -18,25 +16,29 @@ export default defineConfig({
         baseURL: useDocker ? 'http://localhost' : 'http://localhost:5173',
         headless: true,
     },
-    webServer: useDocker ? [
-        // In Docker mode there is no server to start — just wait for nginx to be ready.
-        // reuseExistingServer: true means Playwright skips the command if http://localhost
-        // already responds (which it always does when Docker is up).
-        {
-            url: 'http://localhost',
-            reuseExistingServer: true,
-            command: 'node -e "process.exit(0)"',
-            timeout: 60_000,
-        },
-    ] : [
-        // 0. Redis (needed for event bus between services)
+    webServer: useDocker ? [] : [
+        // 0. Redis
         {
             command: 'redis-server --port 6380 --daemonize no',
             port: 6380,
             timeout: 10_000,
             reuseExistingServer: true,
         },
-        // 1. task-service — exposes /items and /auth on :3000
+        // 1. auth-service
+        {
+            command: [
+                'npx cross-env',
+                'USE_INMEMORY=true',
+                `JWT_SECRET=${ENV.JWT_SECRET}`,
+                'PORT=3001',
+                'npx ts-node src/index.ts',
+            ].join(' '),
+            cwd: '../services/auth-service',
+            port: 3001,
+            timeout: 20_000,
+            reuseExistingServer: true,
+        },
+        // 2. task-service
         {
             command: [
                 'npx cross-env',
@@ -45,6 +47,7 @@ export default defineConfig({
                 `REDIS_HOST=${ENV.REDIS_HOST}`,
                 'REDIS_PORT=6380',
                 'CORS_ORIGIN=http://localhost:5173',
+                'AUTH_SERVICE_URL=http://localhost:3001',
                 'PORT=3000',
                 'npx ts-node src/index.ts',
             ].join(' '),
@@ -54,7 +57,7 @@ export default defineConfig({
             reuseExistingServer: true,
             env: { REDIS_PORT: '6380' },
         },
-        // 2. project-service — exposes /projects on :3002
+        // 3. project-service
         {
             command: [
                 'npx cross-env',
@@ -62,6 +65,7 @@ export default defineConfig({
                 `JWT_SECRET=${ENV.JWT_SECRET}`,
                 `REDIS_HOST=${ENV.REDIS_HOST}`,
                 'REDIS_PORT=6380',
+                'AUTH_SERVICE_URL=http://localhost:3001',
                 'PORT=3002',
                 'npx ts-node src/index.ts',
             ].join(' '),
@@ -71,13 +75,14 @@ export default defineConfig({
             reuseExistingServer: true,
             env: { REDIS_PORT: '6380' },
         },
-        // 3. notification-service — exposes /notifications on :3003
+        // 4. notification-service
         {
             command: [
                 'npx cross-env',
                 `JWT_SECRET=${ENV.JWT_SECRET}`,
                 `REDIS_HOST=${ENV.REDIS_HOST}`,
                 'REDIS_PORT=6380',
+                'AUTH_SERVICE_URL=http://localhost:3001',
                 'PORT=3003',
                 'npx ts-node src/index.ts',
             ].join(' '),
@@ -87,7 +92,7 @@ export default defineConfig({
             reuseExistingServer: true,
             env: { REDIS_PORT: '6380' },
         },
-        // 4. Vite dev server (frontend) — with proxies to all services
+        // 5. Vite dev server
         {
             command: 'npx vite --port 5173',
             port: 5173,

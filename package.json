@@ -3,6 +3,7 @@
   "private": true,
   "workspaces": [
     "frontend",
+    "packages/shared-auth",
     "services/auth-service",
     "services/task-service",
     "services/project-service",
