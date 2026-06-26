@@ -32,6 +32,11 @@ jobs:
           USE_INMEMORY: "true"
           JWT_SECRET: "change-me-in-production"
           REDIS_HOST: localhost
+      - name: Run auth-service tests
+        run: npm test -w services/auth-service -- --coverage --coverageReporters=lcov
+        env:
+          USE_INMEMORY: "true"
+          JWT_SECRET: "change-me-in-production"
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
@@ -63,6 +68,12 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: "6380"
           PORT: "3000"
+      - name: Start auth-service
+        run: npm run start -w services/auth-service &
+        env:
+          USE_INMEMORY: "true"
+          JWT_SECRET: "change-me-in-production"
+          PORT: "3001"
       - name: Start project-service
         run: npm run start -w services/project-service &
         env:

@@ -1,21 +1,28 @@
 import type { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-change-in-production';
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://auth-service:3001';
 
-export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
+export async function authMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         res.status(401).json({ error: 'Authentication required' });
         return;
     }
 
-    const token = authHeader.split(' ')[1];
     try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-        (req as any).userId = decoded.userId;
+        const response = await fetch(`${AUTH_SERVICE_URL}/auth/verify`, {
+            headers: { Authorization: authHeader },
+        });
+
+        if (!response.ok) {
+            res.status(401).json({ error: 'Invalid or expired token' });
+            return;
+        }
+
+        const data = await response.json() as { userId: string };
+        (req as any).userId = data.userId;
         next();
     } catch {
-        res.status(401).json({ error: 'Invalid or expired token' });
+        res.status(401).json({ error: 'Auth service unavailable' });
     }
 }
