@@ -19,7 +19,7 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
             return;
         }
 
-        const data = await response.json() as { userId: string };
+        const data = await response.json() as { valid: boolean; userId: string };
         (req as any).userId = data.userId;
         next();
     } catch {

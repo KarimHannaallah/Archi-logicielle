@@ -41,6 +41,7 @@ services:
       - CORS_ORIGIN=http://localhost
       - PORT=3000
       - REDIS_HOST=redis
+      - AUTH_SERVICE_URL=http://auth-service:3001
     volumes:
       - task-data:/data
     depends_on:
@@ -63,6 +64,7 @@ services:
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - PORT=3002
       - REDIS_HOST=redis
+      - AUTH_SERVICE_URL=http://auth-service:3001
     volumes:
       - project-data:/data
     depends_on:
