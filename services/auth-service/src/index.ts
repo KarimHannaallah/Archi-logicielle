@@ -2,8 +2,10 @@ import { createAuthService } from './domain/AuthService';
 import { createApp } from './app';
 import { createInMemoryUserRepository } from './persistence/inmemory';
 import { createSqliteUserRepository } from './persistence/sqlite';
+import { createMysqlUserRepository } from './persistence/mysql';
 
 function resolveUserAdapter() {
+    if (process.env.MYSQL_HOST) return createMysqlUserRepository();
     if (process.env.USE_INMEMORY === 'true') return createInMemoryUserRepository();
     return createSqliteUserRepository();
 }

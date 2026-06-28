@@ -1,14 +1,14 @@
 import { createProjectService } from './domain/ProjectService';
 import { createInMemoryProjectRepository } from './persistence/inmemory';
 import { createSqliteProjectRepository } from './persistence/sqlite';
+import { createMysqlProjectRepository } from './persistence/mysql';
 import { createApp } from './app';
 import { startEventSubscriber } from './infra/eventBus';
 
 // --- Composition root ---
 function resolveRepository() {
-    if (process.env.USE_INMEMORY === 'true') {
-        return createInMemoryProjectRepository();
-    }
+    if (process.env.MYSQL_HOST) return createMysqlProjectRepository();
+    if (process.env.USE_INMEMORY === 'true') return createInMemoryProjectRepository();
     return createSqliteProjectRepository();
 }
 

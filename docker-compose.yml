@@ -23,8 +23,16 @@ services:
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - CORS_ORIGIN=http://localhost
       - PORT=3001
+      - MYSQL_HOST=${MYSQL_HOST:-}
+      - MYSQL_USER=${MYSQL_USER:-}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-}
+      - MYSQL_DB=${MYSQL_DB:-}
     volumes:
       - auth-data:/data
+    depends_on:
+      mysql:
+        condition: service_healthy
+        required: false
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
       interval: 5s
@@ -48,6 +56,10 @@ services:
       - AUTH_SERVICE_URL=http://auth-service:3001
       - PORT=3000
       - REDIS_HOST=redis
+      - MYSQL_HOST=${MYSQL_HOST:-}
+      - MYSQL_USER=${MYSQL_USER:-}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-}
+      - MYSQL_DB=${MYSQL_DB:-}
     volumes:
       - task-data:/data
     depends_on:
@@ -55,6 +67,9 @@ services:
         condition: service_healthy
       auth-service:
         condition: service_healthy
+      mysql:
+        condition: service_healthy
+        required: false
 
   project-service:
     build:
@@ -71,6 +86,10 @@ services:
       - AUTH_SERVICE_URL=http://auth-service:3001
       - PORT=3002
       - REDIS_HOST=redis
+      - MYSQL_HOST=${MYSQL_HOST:-}
+      - MYSQL_USER=${MYSQL_USER:-}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-}
+      - MYSQL_DB=${MYSQL_DB:-}
     volumes:
       - project-data:/data
     depends_on:
@@ -78,6 +97,9 @@ services:
         condition: service_healthy
       auth-service:
         condition: service_healthy
+      mysql:
+        condition: service_healthy
+        required: false
 
   notification-service:
     build:
