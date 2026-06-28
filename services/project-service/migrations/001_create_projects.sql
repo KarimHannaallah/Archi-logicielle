@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS projects (
+    id VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    userId VARCHAR(36) NOT NULL,
+    status VARCHAR(10) NOT NULL DEFAULT 'open',
+    totalTasks INTEGER NOT NULL DEFAULT 0,
+    completedTasks INTEGER NOT NULL DEFAULT 0,
+    createdAt TEXT NOT NULL
+);

@@ -1,0 +1,14 @@
+{
+  "name": "@archi/shared-db",
+  "version": "1.0.0",
+  "main": "src/migrator.ts",
+  "types": "src/migrator.ts",
+  "license": "MIT",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.3",
+    "typescript": "^6.0.3"
+  }
+}

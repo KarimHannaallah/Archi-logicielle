@@ -21,6 +21,10 @@ describe('sqlite persistence (unit with mocks)', () => {
             nodeEnv = 'test',
         } = opts;
 
+        jest.doMock('@archi/shared-db', () => ({
+            runMigrations: jest.fn().mockResolvedValue([]),
+        }));
+
         // fs mock (mkdir branch)
         jest.doMock('fs', () => ({
             existsSync: jest.fn(() => existsSync),
@@ -117,21 +121,39 @@ describe('sqlite persistence (unit with mocks)', () => {
         expect(consoleSpy).not.toHaveBeenCalled();
     });
 
-    test.each([
-        [
-            'open fails',
-            { dbOpenError: new Error('open failed') },
-            'open failed',
-        ],
-        [
-            'create table fails',
-            { createTableError: new Error('create failed') },
-            'create failed',
-        ],
-    ])('init rejects when %s', async (_label, opts, msg) => {
-        makeMockEnv(opts);
+    test('init rejects when open fails', async () => {
+        makeMockEnv({ dbOpenError: new Error('open failed') });
         const sqlite = require('../../src/persistence/sqlite');
-        await expect(sqlite.init()).rejects.toThrow(msg);
+        await expect(sqlite.init()).rejects.toThrow('open failed');
+    });
+
+    test('init rejects when migration fails', async () => {
+        jest.doMock('@archi/shared-db', () => ({
+            runMigrations: jest.fn().mockRejectedValue(new Error('migration failed')),
+        }));
+        jest.doMock('fs', () => ({
+            existsSync: jest.fn(() => false),
+            mkdirSync: jest.fn(),
+        }));
+        const sqlite3Mock = {
+            verbose: () => sqlite3Mock,
+            Database: jest.fn((_location, cb) => {
+                process.nextTick(() => cb(null));
+                return {
+                    run: jest.fn((sql, paramsOrCb, maybeCb) => {
+                        const cb = typeof paramsOrCb === 'function' ? paramsOrCb : maybeCb;
+                        cb(null);
+                    }),
+                    all: jest.fn(),
+                    close: jest.fn(),
+                };
+            }),
+        };
+        jest.doMock('sqlite3', () => sqlite3Mock);
+        process.env.SQLITE_DB_LOCATION = '/tmp/mock/todo.db';
+        process.env.NODE_ENV = 'test';
+        const sqlite = require('../../src/persistence/sqlite');
+        await expect(sqlite.init()).rejects.toThrow('migration failed');
     });
 
     // ---------- teardown() ----------
@@ -196,14 +218,8 @@ describe('sqlite persistence (unit with mocks)', () => {
     // ---------- add / update / remove (success + error) ----------
 
     test.each([
-        [
-            'add',
-            (s) => s.add({ id: '1', name: 'A', completed: true }),
-        ],
-        [
-            'update',
-            (s) => s.update('1', { name: 'A', completed: false }),
-        ],
+        ['add', (s) => s.add({ id: '1', name: 'A', completed: true })],
+        ['update', (s) => s.update('1', { name: 'A', completed: false })],
         ['remove', (s) => s.remove('1')],
     ])('%s resolves on success', async (_name, call) => {
         const sqlite = await loadAndInit({ runError: null });
@@ -211,14 +227,8 @@ describe('sqlite persistence (unit with mocks)', () => {
     });
 
     test.each([
-        [
-            'add',
-            (s) => s.add({ id: '1', name: 'A', completed: true }),
-        ],
-        [
-            'update',
-            (s) => s.update('1', { name: 'A', completed: false }),
-        ],
+        ['add', (s) => s.add({ id: '1', name: 'A', completed: true })],
+        ['update', (s) => s.update('1', { name: 'A', completed: false })],
         ['remove', (s) => s.remove('1')],
     ])('%s rejects on db.run error', async (_name, call) => {
         const sqlite = await loadAndInit({
@@ -239,14 +249,12 @@ describe('sqlite persistence (unit with mocks)', () => {
         await sqlite.update('1', { name: 'A', completed: true });
         await sqlite.update('2', { name: 'B', completed: false });
 
-        // INSERT params: [id, name, completedFlag]
         const insertCalls = dbObj.run.mock.calls.filter((c) =>
             String(c[0]).includes('INSERT INTO'),
         );
         expect(insertCalls[0][1][2]).toBe(1);
         expect(insertCalls[1][1][2]).toBe(0);
 
-        // UPDATE params: [name, completedFlag, id]
         const updateCalls = dbObj.run.mock.calls.filter((c) =>
             String(c[0]).includes('UPDATE todo_items'),
         );

@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import type { Project } from '../domain/Project';
 import type { ProjectRepository } from '../domain/ProjectRepository';
+import { runMigrations } from '@archi/shared-db';
 
 const sqlite3 = require('sqlite3').verbose();
 
@@ -12,36 +13,25 @@ export function createSqliteProjectRepository(
     let db: any;
 
     return {
-        init(): Promise<void> {
+        async init(): Promise<void> {
             const dirName = path.dirname(location);
             if (!fs.existsSync(dirName)) {
                 fs.mkdirSync(dirName, { recursive: true });
             }
 
-            return new Promise((acc, rej) => {
+            await new Promise<void>((acc, rej) => {
                 db = new sqlite3.Database(location, (err: Error | null) => {
                     if (err) return rej(err);
 
                     if (process.env.NODE_ENV !== 'test')
                         console.log(`[project-service] Using sqlite database at ${location}`);
 
-                    db.run(
-                        `CREATE TABLE IF NOT EXISTS projects (
-                            id VARCHAR(36) PRIMARY KEY,
-                            name VARCHAR(255) NOT NULL,
-                            userId VARCHAR(36) NOT NULL,
-                            status VARCHAR(10) NOT NULL DEFAULT 'open',
-                            totalTasks INTEGER NOT NULL DEFAULT 0,
-                            completedTasks INTEGER NOT NULL DEFAULT 0,
-                            createdAt TEXT NOT NULL
-                        )`,
-                        (err: Error | null) => {
-                            if (err) return rej(err);
-                            acc();
-                        },
-                    );
+                    acc();
                 });
             });
+
+            const migrationsDir = path.join(__dirname, '..', '..', 'migrations');
+            await runMigrations(db, migrationsDir);
         },
 
         teardown(): Promise<void> {

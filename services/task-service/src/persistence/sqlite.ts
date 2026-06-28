@@ -1,37 +1,32 @@
 import fs from 'fs';
 import path from 'path';
 import type { TodoItem } from '../domain/TodoItem';
+import { runMigrations } from '@archi/shared-db';
 
 const sqlite3 = require('sqlite3').verbose();
 const location = process.env.SQLITE_DB_LOCATION || '/etc/todos/todo.db';
 
 let db: any;
 
-function init(): Promise<void> {
+async function init(): Promise<void> {
     const dirName = path.dirname(location);
     if (!fs.existsSync(dirName)) {
         fs.mkdirSync(dirName, { recursive: true });
     }
 
-    return new Promise((acc, rej) => {
+    await new Promise<void>((acc, rej) => {
         db = new sqlite3.Database(location, (err: Error | null) => {
             if (err) return rej(err);
 
             if (process.env.NODE_ENV !== 'test')
                 console.log(`Using sqlite database at ${location}`);
 
-            db.run(
-                'CREATE TABLE IF NOT EXISTS todo_items (id varchar(36), name varchar(255), completed boolean, userId varchar(36), projectId varchar(36))',
-                (err: Error | null) => {
-                    if (err) return rej(err);
-                    // Migration: add columns if they don't exist yet (for existing DBs)
-                    db.run('ALTER TABLE todo_items ADD COLUMN userId varchar(36)', () => {});
-                    db.run('ALTER TABLE todo_items ADD COLUMN projectId varchar(36)', () => {});
-                    acc();
-                },
-            );
+            acc();
         });
     });
+
+    const migrationsDir = path.join(__dirname, '..', '..', 'migrations');
+    await runMigrations(db, migrationsDir);
 }
 
 async function teardown(): Promise<void> {
