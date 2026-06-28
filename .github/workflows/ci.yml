@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, dev, 'feature/**','fix/**','perf/**', ]
+    branches: [main, dev, 'feature/**', 'fix/**', 'perf/**']
   pull_request:
     branches: [main, dev]
 
@@ -49,7 +49,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci -w services/${{ matrix.service }}
+      - run: npm ci --include-workspace-root -w services/${{ matrix.service }}
         if: matrix.changed == 'true'
       - name: npm audit
         if: matrix.changed == 'true'
@@ -99,6 +99,7 @@ jobs:
           npm test -w services/task-service -- --coverage --coverageReporters=lcov || true
           npm test -w services/project-service -- --coverage --coverageReporters=lcov || true
           npm test -w services/auth-service -- --coverage --coverageReporters=lcov || true
+          npm test -w services/notification-service -- --coverage --coverageReporters=lcov || true
         env:
           USE_INMEMORY: "true"
           JWT_SECRET: "change-me-in-production"
