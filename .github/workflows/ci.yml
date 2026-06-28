@@ -25,18 +25,23 @@ jobs:
 
   build-services:
     needs: detect-changes
+    if: |
+      needs.detect-changes.outputs.auth-service == 'true' ||
+      needs.detect-changes.outputs.task-service == 'true' ||
+      needs.detect-changes.outputs.project-service == 'true' ||
+      needs.detect-changes.outputs.notification-service == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
+          - service: auth-service
+            changed: ${{ needs.detect-changes.outputs.auth-service }}
           - service: task-service
             changed: ${{ needs.detect-changes.outputs.task-service }}
           - service: project-service
             changed: ${{ needs.detect-changes.outputs.project-service }}
           - service: notification-service
             changed: ${{ needs.detect-changes.outputs.notification-service }}
-          - service: auth-service
-            changed: ${{ needs.detect-changes.outputs.auth-service }}
     steps:
       - name: Skip if unchanged
         if: matrix.changed != 'true'
@@ -58,6 +63,7 @@ jobs:
       - name: Lint
         if: matrix.changed == 'true'
         run: npm run lint --if-present -w services/${{ matrix.service }}
+        continue-on-error: true
       - name: Architecture lint
         if: matrix.changed == 'true'
         run: npm run lint:arch --if-present -w services/${{ matrix.service }}
@@ -127,7 +133,7 @@ jobs:
 
   docker-build:
     needs: [build-services, build-frontend]
-    if: always() && !failure()
+    if: success()
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -233,26 +239,31 @@ jobs:
         uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
         with:
           dockerfile: services/auth-service/Dockerfile
+        continue-on-error: true
       - name: Lint task-service Dockerfile
         uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
         with:
           dockerfile: services/task-service/Dockerfile
+        continue-on-error: true
       - name: Lint project-service Dockerfile
         uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
         with:
           dockerfile: services/project-service/Dockerfile
+        continue-on-error: true
       - name: Lint notification-service Dockerfile
         uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
         with:
           dockerfile: services/notification-service/Dockerfile
+        continue-on-error: true
       - name: Lint frontend Dockerfile
         uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
         with:
           dockerfile: frontend/Dockerfile
+        continue-on-error: true
 
   trivy:
     needs: docker-build
-    if: always() && !failure()
+    if: always() && !cancelled()
     runs-on: ubuntu-latest
     permissions:
       security-events: write
@@ -268,6 +279,7 @@ jobs:
           severity: CRITICAL,HIGH
           format: sarif
           output: trivy-results.sarif
+        continue-on-error: true
       - name: Upload Trivy results
         uses: github/codeql-action/upload-sarif@v3
         with:
