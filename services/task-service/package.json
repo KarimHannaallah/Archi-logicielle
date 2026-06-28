@@ -25,7 +25,7 @@
     "sqlite3": "^5.1.2",
     "uuid": "^9.0.0",
     "ts-node": "^10.9.2",
-    "@archi/shared-auth": "1.0.0",
+    "@archi/shared-auth": "file:../../packages/shared-auth",
     "express-rate-limit": "^7.5.0",
     "wait-port": "^1.0.4"
   },

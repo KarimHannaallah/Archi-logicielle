@@ -32,11 +32,15 @@ jobs:
           JWT_SECRET: "change-me-in-production"
           REDIS_HOST: localhost
       - name: Run project-service tests
-        run: npm test -w services/project-service
+        run: npm test -w services/project-service -- --coverage --coverageReporters=lcov
         env:
           USE_INMEMORY: "true"
           JWT_SECRET: "change-me-in-production"
           REDIS_HOST: localhost
+      - name: Run notification-service tests
+        run: npm test -w services/notification-service -- --coverage --coverageReporters=lcov
+        env:
+          JWT_SECRET: "change-me-in-production"
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
@@ -44,6 +48,8 @@ jobs:
           path: |
             services/auth-service/coverage/
             services/task-service/coverage/
+            services/project-service/coverage/
+            services/notification-service/coverage/
 
   e2e-tests:
     runs-on: ubuntu-latest
