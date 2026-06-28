@@ -24,7 +24,6 @@ jobs:
         run: bash .github/scripts/detect-changes.sh
 
   build-services:
-    name: "build (${{ matrix.service }})"
     needs: detect-changes
     if: |
       needs.detect-changes.outputs.auth-service == 'true' ||
