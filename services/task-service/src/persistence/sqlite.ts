@@ -15,7 +15,7 @@ async function init(): Promise<void> {
         fs.mkdirSync(dirName, { recursive: true });
     }
 
-    return new Promise((acc, rej) => {
+    await new Promise<void>((acc, rej) => {
         db = new sqlite3.Database(location, (err: Error | null) => {
             if (err) return rej(err);
 
@@ -27,6 +27,9 @@ async function init(): Promise<void> {
             runMigrations(db, migrationsDir).then(() => acc()).catch(rej);
         });
     });
+
+    const migrationsDir = path.join(__dirname, '..', '..', 'migrations');
+    await runMigrations(db, migrationsDir);
 }
 
 async function teardown(): Promise<void> {
