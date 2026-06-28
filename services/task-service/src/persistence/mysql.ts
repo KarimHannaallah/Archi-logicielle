@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import type { TodoItem } from '../domain/TodoItem';
 import { runMigrations, wrapMysqlPool } from '@archi/shared-db';
 

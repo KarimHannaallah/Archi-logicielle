@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import type { User } from '../domain/User';
 import type { UserRepository } from '../domain/UserRepository';
 import { runMigrations, wrapMysqlPool } from '@archi/shared-db';
