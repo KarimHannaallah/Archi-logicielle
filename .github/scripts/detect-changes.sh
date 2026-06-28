@@ -26,11 +26,13 @@ detect() {
   echo "${CHANGED_FILES}" | grep -q "^${prefix}/" && echo "true" || echo "false"
 }
 
+AUTH_SERVICE_CHANGED=$(detect "services/auth-service")
 TASK_SERVICE_CHANGED=$(detect "services/task-service")
 PROJECT_SERVICE_CHANGED=$(detect "services/project-service")
 NOTIFICATION_SERVICE_CHANGED=$(detect "services/notification-service")
 FRONTEND_CHANGED=$(detect "frontend")
 
+echo "AUTH_SERVICE_CHANGED=${AUTH_SERVICE_CHANGED}"
 echo "TASK_SERVICE_CHANGED=${TASK_SERVICE_CHANGED}"
 echo "PROJECT_SERVICE_CHANGED=${PROJECT_SERVICE_CHANGED}"
 echo "NOTIFICATION_SERVICE_CHANGED=${NOTIFICATION_SERVICE_CHANGED}"
@@ -39,12 +41,14 @@ echo "FRONTEND_CHANGED=${FRONTEND_CHANGED}"
 # Export to GitHub Actions environment file if available, otherwise export to shell.
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
   {
-    echo "task-service=${TASK_SERVICE_CHANGED}" >> "${GITHUB_OUTPUT}"
-    echo "project-service=${PROJECT_SERVICE_CHANGED}" >> "${GITHUB_OUTPUT}"
-    echo "notification-service=${NOTIFICATION_SERVICE_CHANGED}" >> "${GITHUB_OUTPUT}"
-    echo "frontend=${FRONTEND_CHANGED}" >> "${GITHUB_OUTPUT}"
+    echo "auth-service=${AUTH_SERVICE_CHANGED}"
+    echo "task-service=${TASK_SERVICE_CHANGED}"
+    echo "project-service=${PROJECT_SERVICE_CHANGED}"
+    echo "notification-service=${NOTIFICATION_SERVICE_CHANGED}"
+    echo "frontend=${FRONTEND_CHANGED}"
   } >> "${GITHUB_OUTPUT}"
 else
+  export AUTH_SERVICE_CHANGED
   export TASK_SERVICE_CHANGED
   export PROJECT_SERVICE_CHANGED
   export NOTIFICATION_SERVICE_CHANGED
