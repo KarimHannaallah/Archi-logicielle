@@ -21,7 +21,7 @@ describe('sqlite persistence (unit with mocks)', () => {
             nodeEnv = 'test',
         } = opts;
 
-        jest.doMock('../../src/persistence/migrator', () => ({
+        jest.doMock('@archi/shared-db', () => ({
             runMigrations: jest.fn().mockResolvedValue([]),
         }));
 
@@ -128,7 +128,7 @@ describe('sqlite persistence (unit with mocks)', () => {
     });
 
     test('init rejects when migration fails', async () => {
-        jest.doMock('../../src/persistence/migrator', () => ({
+        jest.doMock('@archi/shared-db', () => ({
             runMigrations: jest.fn().mockRejectedValue(new Error('migration failed')),
         }));
         jest.doMock('fs', () => ({
@@ -218,14 +218,8 @@ describe('sqlite persistence (unit with mocks)', () => {
     // ---------- add / update / remove (success + error) ----------
 
     test.each([
-        [
-            'add',
-            (s) => s.add({ id: '1', name: 'A', completed: true }),
-        ],
-        [
-            'update',
-            (s) => s.update('1', { name: 'A', completed: false }),
-        ],
+        ['add', (s) => s.add({ id: '1', name: 'A', completed: true })],
+        ['update', (s) => s.update('1', { name: 'A', completed: false })],
         ['remove', (s) => s.remove('1')],
     ])('%s resolves on success', async (_name, call) => {
         const sqlite = await loadAndInit({ runError: null });
@@ -233,14 +227,8 @@ describe('sqlite persistence (unit with mocks)', () => {
     });
 
     test.each([
-        [
-            'add',
-            (s) => s.add({ id: '1', name: 'A', completed: true }),
-        ],
-        [
-            'update',
-            (s) => s.update('1', { name: 'A', completed: false }),
-        ],
+        ['add', (s) => s.add({ id: '1', name: 'A', completed: true })],
+        ['update', (s) => s.update('1', { name: 'A', completed: false })],
         ['remove', (s) => s.remove('1')],
     ])('%s rejects on db.run error', async (_name, call) => {
         const sqlite = await loadAndInit({
@@ -261,14 +249,12 @@ describe('sqlite persistence (unit with mocks)', () => {
         await sqlite.update('1', { name: 'A', completed: true });
         await sqlite.update('2', { name: 'B', completed: false });
 
-        // INSERT params: [id, name, completedFlag]
         const insertCalls = dbObj.run.mock.calls.filter((c) =>
             String(c[0]).includes('INSERT INTO'),
         );
         expect(insertCalls[0][1][2]).toBe(1);
         expect(insertCalls[1][1][2]).toBe(0);
 
-        // UPDATE params: [name, completedFlag, id]
         const updateCalls = dbObj.run.mock.calls.filter((c) =>
             String(c[0]).includes('UPDATE todo_items'),
         );

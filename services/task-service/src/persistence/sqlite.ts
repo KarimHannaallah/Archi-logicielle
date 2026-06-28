@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { TodoItem } from '../domain/TodoItem';
-import { runMigrations } from './migrator';
+import { runMigrations } from '@archi/shared-db';
 
 const sqlite3 = require('sqlite3').verbose();
 const location = process.env.SQLITE_DB_LOCATION || '/etc/todos/todo.db';

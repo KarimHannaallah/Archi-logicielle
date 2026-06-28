@@ -1,5 +1,5 @@
 import path from 'path';
-import { runMigrations } from '../src/persistence/migrator';
+import { runMigrations } from '@archi/shared-db';
 
 const sqlite3 = require('sqlite3').verbose();
 

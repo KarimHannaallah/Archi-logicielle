@@ -20,6 +20,7 @@
     "sqlite3": "^5.1.2",
     "ts-node": "^10.9.2",
     "@archi/shared-auth": "file:../../packages/shared-auth",
+    "@archi/shared-db": "file:../../packages/shared-db",
     "uuid": "^9.0.0"
   },
   "jest": {

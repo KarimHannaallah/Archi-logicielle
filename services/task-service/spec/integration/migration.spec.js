@@ -1,5 +1,6 @@
 const path = require('path');
-const { runMigrations } = require('../../src/persistence/migrator');
+const { runMigrations } = require('@archi/shared-db');
+
 
 const sqlite3 = require('sqlite3').verbose();
 

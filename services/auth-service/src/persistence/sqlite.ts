@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import type { User } from '../domain/User';
 import type { UserRepository } from '../domain/UserRepository';
-import { runMigrations } from './migrator';
+import { runMigrations } from '@archi/shared-db';
 
 const sqlite3 = require('sqlite3').verbose();
 

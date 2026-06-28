@@ -22,6 +22,7 @@
     "jsonwebtoken": "^9.0.2",
     "sqlite3": "^6.0.1",
     "ts-node": "^10.9.2",
+    "@archi/shared-db": "file:../../packages/shared-db",
     "uuid": "^9.0.0"
 },
 "devDependencies": {
