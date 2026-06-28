@@ -1,10 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-# Determine the base commit to compare against.
-# In a GitHub Actions PR context, GITHUB_BASE_REF is set.
-# In a push context, compare against the previous commit.
-# Locally (no CI env), fall back to main.
 if [ -n "${GITHUB_BASE_REF:-}" ]; then
   git fetch origin "${GITHUB_BASE_REF}" --depth=1 2>/dev/null || true
   BASE="origin/${GITHUB_BASE_REF}"
@@ -31,14 +27,24 @@ TASK_SERVICE_CHANGED=$(detect "services/task-service")
 PROJECT_SERVICE_CHANGED=$(detect "services/project-service")
 NOTIFICATION_SERVICE_CHANGED=$(detect "services/notification-service")
 FRONTEND_CHANGED=$(detect "frontend")
+SHARED_CHANGED=$(detect "packages")
+
+# Si un package partagé change → forcer le rebuild de tous les services
+if [ "${SHARED_CHANGED}" = "true" ]; then
+    AUTH_SERVICE_CHANGED="true"
+    TASK_SERVICE_CHANGED="true"
+    PROJECT_SERVICE_CHANGED="true"
+    NOTIFICATION_SERVICE_CHANGED="true"
+    FRONTEND_CHANGED="true"
+fi
 
 echo "AUTH_SERVICE_CHANGED=${AUTH_SERVICE_CHANGED}"
 echo "TASK_SERVICE_CHANGED=${TASK_SERVICE_CHANGED}"
 echo "PROJECT_SERVICE_CHANGED=${PROJECT_SERVICE_CHANGED}"
 echo "NOTIFICATION_SERVICE_CHANGED=${NOTIFICATION_SERVICE_CHANGED}"
 echo "FRONTEND_CHANGED=${FRONTEND_CHANGED}"
+echo "SHARED_CHANGED=${SHARED_CHANGED}"
 
-# Export to GitHub Actions environment file if available, otherwise export to shell.
 if [ -n "${GITHUB_OUTPUT:-}" ]; then
   {
     echo "auth-service=${AUTH_SERVICE_CHANGED}"
