@@ -1,4 +1,4 @@
-import path from 'path';
+import path from 'node:path';
 import { runMigrations } from '@archi/shared-db';
 
 const sqlite3 = require('sqlite3').verbose();

@@ -15,6 +15,8 @@ const ITEM = {
     id: '7aef3d7c-d301-4846-8358-2a91ec9d6be3',
     name: 'Test',
     completed: false,
+    userId: null,
+    projectId: null,
 };
 
 beforeEach(async () => {

@@ -1,5 +1,7 @@
 import fs from 'fs';
+import path from 'path';
 import type { TodoItem } from '../domain/TodoItem';
+import { runMigrations, wrapMysqlPool } from '@archi/shared-db';
 
 const mysql = require('mysql2');
 const waitPort = require('wait-port');
@@ -41,16 +43,9 @@ async function init(): Promise<void> {
         port,
     });
 
-    return new Promise((acc, rej) => {
-        pool.query(
-            'CREATE TABLE IF NOT EXISTS todo_items (id varchar(36), name varchar(255), completed boolean, user_id varchar(36), project_id varchar(36) DEFAULT \'\')',
-            (err: Error | null) => {
-                if (err) return rej(err);
-                console.log(`Connected to mysql db at host ${host}`);
-                acc();
-            },
-        );
-    });
+    const migrationsDir = path.join(__dirname, '..', '..', 'migrations');
+    await runMigrations(wrapMysqlPool(pool), migrationsDir);
+    console.log(`Connected to mysql db at host ${host}`);
 }
 
 async function teardown(): Promise<void> {
@@ -67,11 +62,11 @@ async function getAll(userId?: string, projectId?: string): Promise<TodoItem[]> 
         let query = 'SELECT * FROM todo_items WHERE 1=1';
         const params: any[] = [];
         if (userId) {
-            query += ' AND user_id=?';
+            query += ' AND userId=?';
             params.push(userId);
         }
         if (projectId) {
-            query += ' AND project_id=?';
+            query += ' AND projectId=?';
             params.push(projectId);
         }
         pool.query(query, params, (err: Error | null, rows: any[]) => {
@@ -80,8 +75,6 @@ async function getAll(userId?: string, projectId?: string): Promise<TodoItem[]> 
                 rows.map(item =>
                     Object.assign({}, item, {
                         completed: item.completed === 1,
-                        projectId: item.project_id || '',
-                        userId: item.user_id || '',
                     }),
                 ),
             );
@@ -97,8 +90,6 @@ async function getById(id: string): Promise<TodoItem | undefined> {
                 rows.map(item =>
                     Object.assign({}, item, {
                         completed: item.completed === 1,
-                        projectId: item.project_id || '',
-                        userId: item.user_id || '',
                     }),
                 )[0],
             );
@@ -109,8 +100,8 @@ async function getById(id: string): Promise<TodoItem | undefined> {
 async function add(item: TodoItem): Promise<void> {
     return new Promise((acc, rej) => {
         pool.query(
-            'INSERT INTO todo_items (id, name, completed, user_id, project_id) VALUES (?, ?, ?, ?, ?)',
-            [item.id, item.name, item.completed ? 1 : 0, item.userId || null, item.projectId || ''],
+            'INSERT INTO todo_items (id, name, completed, userId, projectId) VALUES (?, ?, ?, ?, ?)',
+            [item.id, item.name, item.completed ? 1 : 0, item.userId || null, item.projectId || null],
             (err: Error | null) => {
                 if (err) return rej(err);
                 acc();

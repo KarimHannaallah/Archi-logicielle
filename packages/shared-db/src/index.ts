@@ -1,1 +1,1 @@
-export { runMigrations } from './migrator';
+export { runMigrations, wrapMysqlPool } from './migrator';

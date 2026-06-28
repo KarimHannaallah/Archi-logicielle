@@ -4,7 +4,8 @@ import type { TodoItem } from '../domain/TodoItem';
 import { runMigrations } from '@archi/shared-db';
 
 const sqlite3 = require('sqlite3').verbose();
-const location = process.env.SQLITE_DB_LOCATION || '/etc/todos/todo.db';
+
+const location = process.env.SQLITE_DB_LOCATION || '/tmp/todo.db';
 
 let db: any;
 
@@ -14,19 +15,18 @@ async function init(): Promise<void> {
         fs.mkdirSync(dirName, { recursive: true });
     }
 
-    await new Promise<void>((acc, rej) => {
+    return new Promise((acc, rej) => {
         db = new sqlite3.Database(location, (err: Error | null) => {
             if (err) return rej(err);
 
-            if (process.env.NODE_ENV !== 'test')
+            if (process.env.NODE_ENV !== 'test') {
                 console.log(`Using sqlite database at ${location}`);
+            }
 
-            acc();
+            const migrationsDir = path.join(__dirname, '..', '..', 'migrations');
+            runMigrations(db, migrationsDir).then(() => acc()).catch(rej);
         });
     });
-
-    const migrationsDir = path.join(__dirname, '..', '..', 'migrations');
-    await runMigrations(db, migrationsDir);
 }
 
 async function teardown(): Promise<void> {
@@ -38,38 +38,27 @@ async function teardown(): Promise<void> {
     });
 }
 
-function mapRow(item: any): TodoItem {
-    const mapped: any = {
-        id: item.id,
-        name: item.name,
-        completed: item.completed === 1,
-    };
-    // Only include userId/projectId if they have a value (backward compat with toEqual in tests)
-    if (item.userId != null) mapped.userId = item.userId;
-    if (item.projectId != null) mapped.projectId = item.projectId;
-    return mapped as TodoItem;
-}
-
 async function getAll(userId?: string, projectId?: string): Promise<TodoItem[]> {
     return new Promise((acc, rej) => {
-        let sql = 'SELECT * FROM todo_items';
+        let query = 'SELECT * FROM todo_items WHERE 1=1';
         const params: any[] = [];
-
-        if (userId !== undefined && userId !== '') {
-            sql += ' WHERE userId = ?';
+        if (userId) {
+            query += ' AND userId=?';
             params.push(userId);
-            if (projectId !== undefined) {
-                sql += ' AND projectId = ?';
-                params.push(projectId);
-            }
-        } else if (projectId !== undefined) {
-            sql += ' WHERE projectId = ?';
+        }
+        if (projectId) {
+            query += ' AND projectId=?';
             params.push(projectId);
         }
-
-        db.all(sql, params, (err: Error | null, rows: any[]) => {
+        db.all(query, params, (err: Error | null, rows: any[]) => {
             if (err) return rej(err);
-            acc(rows.map(mapRow));
+            acc(
+                rows.map(item =>
+                    Object.assign({}, item, {
+                        completed: item.completed === 1,
+                    }),
+                ),
+            );
         });
     });
 }
@@ -78,7 +67,13 @@ async function getById(id: string): Promise<TodoItem | undefined> {
     return new Promise((acc, rej) => {
         db.all('SELECT * FROM todo_items WHERE id=?', [id], (err: Error | null, rows: any[]) => {
             if (err) return rej(err);
-            acc(rows.map(mapRow)[0]);
+            acc(
+                rows.map(item =>
+                    Object.assign({}, item, {
+                        completed: item.completed === 1,
+                    }),
+                )[0],
+            );
         });
     });
 }
