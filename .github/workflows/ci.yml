@@ -133,7 +133,10 @@ jobs:
 
   docker-build:
     needs: [build-services, build-frontend]
-    if: success()
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
     permissions:
       contents: read
