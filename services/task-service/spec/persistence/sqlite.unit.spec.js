@@ -26,7 +26,7 @@ describe('sqlite persistence (unit with mocks)', () => {
         }));
 
         // fs mock (mkdir branch)
-        jest.doMock('fs', () => ({
+        jest.doMock('node:fs', () => ({
             existsSync: jest.fn(() => existsSync),
             mkdirSync: jest.fn(),
         }));
@@ -80,7 +80,7 @@ describe('sqlite persistence (unit with mocks)', () => {
         const sqlite = require('../../src/persistence/sqlite');
         await sqlite.init();
 
-        const fsMock = require('fs');
+        const fsMock = require('node:fs');
         expect(fsMock.existsSync).toHaveBeenCalledWith('/tmp/mock');
         expect(fsMock.mkdirSync).toHaveBeenCalledWith('/tmp/mock', {
             recursive: true,
@@ -92,7 +92,7 @@ describe('sqlite persistence (unit with mocks)', () => {
         const sqlite = require('../../src/persistence/sqlite');
         await sqlite.init();
 
-        const fsMock = require('fs');
+        const fsMock = require('node:fs');
         expect(fsMock.existsSync).toHaveBeenCalled();
         expect(fsMock.mkdirSync).not.toHaveBeenCalled();
     });
@@ -131,7 +131,7 @@ describe('sqlite persistence (unit with mocks)', () => {
         jest.doMock('@archi/shared-db', () => ({
             runMigrations: jest.fn().mockRejectedValue(new Error('migration failed')),
         }));
-        jest.doMock('fs', () => ({
+        jest.doMock('node:fs', () => ({
             existsSync: jest.fn(() => false),
             mkdirSync: jest.fn(),
         }));
