@@ -1,5 +1,5 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import node_fs from 'node:fs';
+import node_path from 'node:path';
 import type { TodoItem } from '../domain/TodoItem';
 import { runMigrations, wrapMysqlPool } from '@archi/shared-db';
 
@@ -19,7 +19,7 @@ const {
 
 function getSecret(secret: string | undefined, file: string | undefined): string {
     if (secret) return secret;
-    if (file) return fs.readFileSync(file, 'utf8').trim();
+    if (file) return node_fs.readFileSync(file, 'utf8').trim();
     return '';
 }
 
@@ -43,7 +43,7 @@ async function init(): Promise<void> {
         port,
     });
 
-    const migrationsDir = path.join(__dirname, '..', '..', 'migrations');
+    const migrationsDir = node_path.join(__dirname, '..', '..', 'migrations');
     await runMigrations(wrapMysqlPool(pool), migrationsDir);
     console.log(`Connected to mysql db at host ${host}`);
 }
@@ -61,23 +61,11 @@ async function getAll(userId?: string, projectId?: string): Promise<TodoItem[]> 
     return new Promise((acc, rej) => {
         let query = 'SELECT * FROM todo_items WHERE 1=1';
         const params: any[] = [];
-        if (userId) {
-            query += ' AND userId=?';
-            params.push(userId);
-        }
-        if (projectId) {
-            query += ' AND projectId=?';
-            params.push(projectId);
-        }
+        if (userId) { query += ' AND userId=?'; params.push(userId); }
+        if (projectId) { query += ' AND projectId=?'; params.push(projectId); }
         pool.query(query, params, (err: Error | null, rows: any[]) => {
             if (err) return rej(err);
-            acc(
-                rows.map(item =>
-                    Object.assign({}, item, {
-                        completed: item.completed === 1,
-                    }),
-                ),
-            );
+            acc(rows.map(item => ({ ...item, completed: item.completed === 1 })));
         });
     });
 }
@@ -86,13 +74,7 @@ async function getById(id: string): Promise<TodoItem | undefined> {
     return new Promise((acc, rej) => {
         pool.query('SELECT * FROM todo_items WHERE id=?', [id], (err: Error | null, rows: any[]) => {
             if (err) return rej(err);
-            acc(
-                rows.map(item =>
-                    Object.assign({}, item, {
-                        completed: item.completed === 1,
-                    }),
-                )[0],
-            );
+            acc(rows.map(item => ({ ...item, completed: item.completed === 1 }))[0]);
         });
     });
 }
@@ -102,10 +84,7 @@ async function add(item: TodoItem): Promise<void> {
         pool.query(
             'INSERT INTO todo_items (id, name, completed, userId, projectId) VALUES (?, ?, ?, ?, ?)',
             [item.id, item.name, item.completed ? 1 : 0, item.userId || null, item.projectId || null],
-            (err: Error | null) => {
-                if (err) return rej(err);
-                acc();
-            },
+            (err: Error | null) => { if (err) return rej(err); acc(); },
         );
     });
 }
@@ -115,10 +94,7 @@ async function update(id: string, data: { name: string; completed: boolean }): P
         pool.query(
             'UPDATE todo_items SET name=?, completed=? WHERE id = ?',
             [data.name, data.completed ? 1 : 0, id],
-            (err: Error | null) => {
-                if (err) return rej(err);
-                acc();
-            },
+            (err: Error | null) => { if (err) return rej(err); acc(); },
         );
     });
 }
@@ -132,14 +108,5 @@ async function remove(id: string): Promise<void> {
     });
 }
 
-const adapter = {
-    init,
-    teardown,
-    getAll,
-    getById,
-    add,
-    update,
-    remove,
-};
-
+const adapter = { init, teardown, getAll, getById, add, update, remove };
 export = adapter;
