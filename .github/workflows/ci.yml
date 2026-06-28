@@ -23,13 +23,95 @@ jobs:
         id: changes
         run: bash .github/scripts/detect-changes.sh
 
+  # ── Étape 1 — Checks statiques (parallèle) ──────────────────────────────────
+
+  hadolint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Lint auth-service Dockerfile
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
+        with:
+          dockerfile: services/auth-service/Dockerfile
+        continue-on-error: true
+      - name: Lint task-service Dockerfile
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
+        with:
+          dockerfile: services/task-service/Dockerfile
+        continue-on-error: true
+      - name: Lint project-service Dockerfile
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
+        with:
+          dockerfile: services/project-service/Dockerfile
+        continue-on-error: true
+      - name: Lint notification-service Dockerfile
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
+        with:
+          dockerfile: services/notification-service/Dockerfile
+        continue-on-error: true
+      - name: Lint frontend Dockerfile
+        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
+        with:
+          dockerfile: frontend/Dockerfile
+        continue-on-error: true
+
+  validate-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Validate docker-compose
+        run: docker compose config -q
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+      - name: Gitleaks secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  license-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Check licenses auth-service
+        run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start services/auth-service
+        continue-on-error: true
+      - name: Check licenses task-service
+        run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start services/task-service
+        continue-on-error: true
+      - name: Check licenses project-service
+        run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start services/project-service
+        continue-on-error: true
+      - name: Check licenses notification-service
+        run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start services/notification-service
+        continue-on-error: true
+      - name: Check licenses frontend
+        run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start frontend
+        continue-on-error: true
+
+  # ── Étape 2 — Build et tests (parallèle, après checks statiques) ────────────
+
   build-services:
-    needs: detect-changes
+    needs: [detect-changes, gitleaks, validate-compose]
     if: |
-      needs.detect-changes.outputs.auth-service == 'true' ||
-      needs.detect-changes.outputs.task-service == 'true' ||
-      needs.detect-changes.outputs.project-service == 'true' ||
-      needs.detect-changes.outputs.notification-service == 'true'
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      (
+        needs.detect-changes.outputs.auth-service == 'true' ||
+        needs.detect-changes.outputs.task-service == 'true' ||
+        needs.detect-changes.outputs.project-service == 'true' ||
+        needs.detect-changes.outputs.notification-service == 'true'
+      )
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -88,8 +170,12 @@ jobs:
           path: services/${{ matrix.service }}/test-results/
 
   build-frontend:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.frontend == 'true'
+    needs: [detect-changes, gitleaks, validate-compose]
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.detect-changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -102,6 +188,8 @@ jobs:
         run: npm run lint --if-present -w frontend
         continue-on-error: true
       - run: npm run build -w frontend
+
+  # ── Étape 3 — Qualité du code ────────────────────────────────────────────────
 
   sonarqube:
     needs: [build-services, build-frontend]
@@ -130,6 +218,8 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+  # ── Étape 4 — Build Docker ───────────────────────────────────────────────────
 
   docker-build:
     needs: [build-services, build-frontend, sonarqube]
@@ -234,35 +324,7 @@ jobs:
           echo "- \`ghcr.io/${{ env.REPO }}/notification-service:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`ghcr.io/${{ env.REPO }}/frontend:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
 
-  hadolint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - name: Lint auth-service Dockerfile
-        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
-        with:
-          dockerfile: services/auth-service/Dockerfile
-        continue-on-error: true
-      - name: Lint task-service Dockerfile
-        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
-        with:
-          dockerfile: services/task-service/Dockerfile
-        continue-on-error: true
-      - name: Lint project-service Dockerfile
-        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
-        with:
-          dockerfile: services/project-service/Dockerfile
-        continue-on-error: true
-      - name: Lint notification-service Dockerfile
-        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
-        with:
-          dockerfile: services/notification-service/Dockerfile
-        continue-on-error: true
-      - name: Lint frontend Dockerfile
-        uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf
-        with:
-          dockerfile: frontend/Dockerfile
-        continue-on-error: true
+  # ── Étape 5 — Scan de sécurité des images ───────────────────────────────────
 
   trivy:
     needs: docker-build
@@ -289,48 +351,7 @@ jobs:
           sarif_file: trivy-results.sarif
         continue-on-error: true
 
-  validate-compose:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - name: Validate docker-compose
-        run: docker compose config -q
-
-  gitleaks:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          fetch-depth: 0
-      - name: Gitleaks secret scan
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  license-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - name: Check licenses auth-service
-        run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start services/auth-service
-        continue-on-error: true
-      - name: Check licenses task-service
-        run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start services/task-service
-        continue-on-error: true
-      - name: Check licenses project-service
-        run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start services/project-service
-        continue-on-error: true
-      - name: Check licenses notification-service
-        run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start services/notification-service
-        continue-on-error: true
-      - name: Check licenses frontend
-        run: npx license-checker --production --failOn "GPL-3.0;AGPL-3.0" --start frontend
-        continue-on-error: true
+  # ── Résumé ───────────────────────────────────────────────────────────────────
 
   pipeline-summary:
     needs: [build-services, build-frontend, sonarqube, docker-build, hadolint, trivy, validate-compose, gitleaks, license-check]
@@ -343,15 +364,15 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| gitleaks | ${{ needs.gitleaks.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| validate-compose | ${{ needs.validate-compose.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| hadolint | ${{ needs.hadolint.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| license-check | ${{ needs.license-check.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| build-services | ${{ needs.build-services.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| build-frontend | ${{ needs.build-frontend.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| sonarqube | ${{ needs.sonarqube.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| docker-build | ${{ needs.docker-build.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| hadolint | ${{ needs.hadolint.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| trivy | ${{ needs.trivy.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| validate-compose | ${{ needs.validate-compose.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| gitleaks | ${{ needs.gitleaks.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| license-check | ${{ needs.license-check.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
