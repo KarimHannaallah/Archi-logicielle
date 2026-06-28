@@ -21,6 +21,10 @@ describe('sqlite persistence (unit with mocks)', () => {
             nodeEnv = 'test',
         } = opts;
 
+        jest.doMock('../../src/persistence/migrator', () => ({
+            runMigrations: jest.fn().mockResolvedValue([]),
+        }));
+
         // fs mock (mkdir branch)
         jest.doMock('fs', () => ({
             existsSync: jest.fn(() => existsSync),
@@ -117,21 +121,39 @@ describe('sqlite persistence (unit with mocks)', () => {
         expect(consoleSpy).not.toHaveBeenCalled();
     });
 
-    test.each([
-        [
-            'open fails',
-            { dbOpenError: new Error('open failed') },
-            'open failed',
-        ],
-        [
-            'create table fails',
-            { createTableError: new Error('create failed') },
-            'create failed',
-        ],
-    ])('init rejects when %s', async (_label, opts, msg) => {
-        makeMockEnv(opts);
+    test('init rejects when open fails', async () => {
+        makeMockEnv({ dbOpenError: new Error('open failed') });
         const sqlite = require('../../src/persistence/sqlite');
-        await expect(sqlite.init()).rejects.toThrow(msg);
+        await expect(sqlite.init()).rejects.toThrow('open failed');
+    });
+
+    test('init rejects when migration fails', async () => {
+        jest.doMock('../../src/persistence/migrator', () => ({
+            runMigrations: jest.fn().mockRejectedValue(new Error('migration failed')),
+        }));
+        jest.doMock('fs', () => ({
+            existsSync: jest.fn(() => false),
+            mkdirSync: jest.fn(),
+        }));
+        const sqlite3Mock = {
+            verbose: () => sqlite3Mock,
+            Database: jest.fn((_location, cb) => {
+                process.nextTick(() => cb(null));
+                return {
+                    run: jest.fn((sql, paramsOrCb, maybeCb) => {
+                        const cb = typeof paramsOrCb === 'function' ? paramsOrCb : maybeCb;
+                        cb(null);
+                    }),
+                    all: jest.fn(),
+                    close: jest.fn(),
+                };
+            }),
+        };
+        jest.doMock('sqlite3', () => sqlite3Mock);
+        process.env.SQLITE_DB_LOCATION = '/tmp/mock/todo.db';
+        process.env.NODE_ENV = 'test';
+        const sqlite = require('../../src/persistence/sqlite');
+        await expect(sqlite.init()).rejects.toThrow('migration failed');
     });
 
     // ---------- teardown() ----------

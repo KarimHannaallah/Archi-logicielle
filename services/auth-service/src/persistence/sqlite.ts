@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import type { User } from '../domain/User';
 import type { UserRepository } from '../domain/UserRepository';
+import { runMigrations } from './migrator';
 
 const sqlite3 = require('sqlite3').verbose();
 
@@ -10,32 +11,21 @@ export function createSqliteUserRepository(dbLocation?: string): UserRepository 
     let db: any;
 
     return {
-        init(): Promise<void> {
+        async init(): Promise<void> {
             const dirName = path.dirname(location);
             if (!fs.existsSync(dirName)) {
                 fs.mkdirSync(dirName, { recursive: true });
             }
 
-            return new Promise((acc, rej) => {
+            await new Promise<void>((acc, rej) => {
                 db = new sqlite3.Database(location, (err: Error | null) => {
                     if (err) return rej(err);
-
-                    db.run(
-                        `CREATE TABLE IF NOT EXISTS users (
-                            id VARCHAR(36) PRIMARY KEY,
-                            email VARCHAR(255) UNIQUE NOT NULL,
-                            name VARCHAR(255) NOT NULL,
-                            password_hash TEXT NOT NULL,
-                            created_at TEXT NOT NULL,
-                            consent_given BOOLEAN DEFAULT 0
-                        )`,
-                        (err: Error | null) => {
-                            if (err) return rej(err);
-                            acc();
-                        },
-                    );
+                    acc();
                 });
             });
+
+            const migrationsDir = path.join(__dirname, '..', '..', 'migrations');
+            await runMigrations(db, migrationsDir);
         },
 
         async teardown(): Promise<void> {
