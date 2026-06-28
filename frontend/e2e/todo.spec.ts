@@ -13,6 +13,7 @@ test.beforeEach(async ({ page, request }) => {
     const regRes = await request.post('/api/auth/v1/register', {
         data: { email, name: 'Test User', password: 'password123', consent: true },
     });
+    expect(regRes.ok()).toBeTruthy();
     const { token, user } = await regRes.json();
 
     // 2. Create project via API
@@ -20,9 +21,10 @@ test.beforeEach(async ({ page, request }) => {
         headers: { Authorization: `Bearer ${token}` },
         data: { name: 'Test Project' },
     });
+    expect(projRes.ok()).toBeTruthy();
     const project = await projRes.json();
 
-    // 3. Injecter le token dans le navigateur et naviguer vers le projet
+    // 3. Inject token and navigate
     await page.goto('/');
     await page.evaluate(({ t, u }) => {
         localStorage.setItem('token', t);
