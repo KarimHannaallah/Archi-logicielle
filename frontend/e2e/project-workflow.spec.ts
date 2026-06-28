@@ -14,7 +14,7 @@ function uniqueUser() {
 
 async function registerAndLogin(page: any, request: any, user: { email: string; name: string; password: string }) {
     // Register via API (fast), then inject token into browser
-    const regRes = await request.post('/api/auth/register', {
+    const regRes = await request.post('/api/auth/v1/register', {
         data: { email: user.email, name: user.name, password: user.password, consent: true },
     });
     const { token, user: userData } = await regRes.json();
