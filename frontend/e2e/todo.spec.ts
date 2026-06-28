@@ -10,7 +10,7 @@ test.beforeEach(async ({ page, request }) => {
     const email = `test-e2e-${Date.now()}-${userCounter}@example.com`;
 
     // 1. Register via API
-    const regRes = await request.post('/api/auth/register', {
+    const regRes = await request.post('/api/auth/v1/register', {
         data: { email, name: 'Test User', password: 'password123', consent: true },
     });
     const { token, user } = await regRes.json();

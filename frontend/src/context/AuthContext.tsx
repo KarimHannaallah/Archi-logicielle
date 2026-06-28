@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const login = async (email: string, password: string) => {
-        const data = await apiPost<AuthResponse>('/auth/login', { email, password });
+        const data = await apiPost<AuthResponse>('/auth/v1/login', { email, password });
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         setToken(data.token);
@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const register = async (email: string, name: string, password: string, consent: boolean) => {
-        const data = await apiPost<AuthResponse>('/auth/register', { email, name, password, consent });
+        const data = await apiPost<AuthResponse>('/auth/v1/register', { email, name, password, consent });
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
         setToken(data.token);
@@ -54,10 +54,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
     };
 
-    const getProfile = () => apiGet<UserProfile>('/auth/profile');
+    const getProfile = () => apiGet<UserProfile>('/auth/v1/profile');
 
     const updateProfile = async (data: { name: string; email: string }) => {
-        const profile = await apiPut<UserProfile>('/auth/profile', data);
+        const profile = await apiPut<UserProfile>('/auth/v1/profile', data);
         const updatedUser = { id: profile.id, email: profile.email, name: profile.name };
         localStorage.setItem('user', JSON.stringify(updatedUser));
         setUser(updatedUser);
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const deleteAccount = async () => {
-        await apiDelete('/auth/profile');
+        await apiDelete('/auth/v1/profile');
         logout();
     };
 
