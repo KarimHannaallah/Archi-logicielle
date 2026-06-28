@@ -24,6 +24,7 @@ jobs:
         run: bash .github/scripts/detect-changes.sh
 
   build-services:
+    name: build-services (${{ matrix.service }})
     needs: detect-changes
     if: |
       needs.detect-changes.outputs.auth-service == 'true' ||
@@ -133,7 +134,10 @@ jobs:
 
   docker-build:
     needs: [build-services, build-frontend]
-    if: success()
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
     permissions:
       contents: read
