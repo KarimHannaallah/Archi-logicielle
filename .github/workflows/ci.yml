@@ -87,8 +87,24 @@ jobs:
           name: test-results-${{ matrix.service }}
           path: services/${{ matrix.service }}/test-results/
 
+  build-frontend:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci -w frontend
+      - name: Lint
+        run: npm run lint --if-present -w frontend
+        continue-on-error: true
+      - run: npm run build -w frontend
+
   sonarqube:
-    needs: [build-services]
+    needs: [build-services, build-frontend]
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
@@ -115,24 +131,8 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-  build-frontend:
-    needs: detect-changes
-    if: needs.detect-changes.outputs.frontend == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci -w frontend
-      - name: Lint
-        run: npm run lint --if-present -w frontend
-        continue-on-error: true
-      - run: npm run build -w frontend
-
   docker-build:
-    needs: [build-services, build-frontend]
+    needs: [build-services, build-frontend, sonarqube]
     if: |
       always() &&
       !contains(needs.*.result, 'failure') &&
@@ -333,7 +333,7 @@ jobs:
         continue-on-error: true
 
   pipeline-summary:
-    needs: [build-services, build-frontend, docker-build, hadolint, trivy, validate-compose, gitleaks, license-check, sonarqube]
+    needs: [build-services, build-frontend, sonarqube, docker-build, hadolint, trivy, validate-compose, gitleaks, license-check]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -345,8 +345,8 @@ jobs:
           echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
           echo "| build-services | ${{ needs.build-services.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| build-frontend | ${{ needs.build-frontend.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| docker-build | ${{ needs.docker-build.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| sonarqube | ${{ needs.sonarqube.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| docker-build | ${{ needs.docker-build.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| hadolint | ${{ needs.hadolint.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| trivy | ${{ needs.trivy.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| validate-compose | ${{ needs.validate-compose.result }} |" >> $GITHUB_STEP_SUMMARY
