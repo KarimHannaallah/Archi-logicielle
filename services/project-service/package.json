@@ -19,7 +19,7 @@
     "jsonwebtoken": "^9.0.2",
     "sqlite3": "^5.1.2",
     "ts-node": "^10.9.2",
-    "@archi/shared-auth": "1.0.0",
+    "@archi/shared-auth": "file:../../packages/shared-auth",
     "uuid": "^9.0.0"
   },
   "jest": {
