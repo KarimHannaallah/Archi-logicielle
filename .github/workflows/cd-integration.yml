@@ -10,10 +10,6 @@ concurrency:
   group: cd-integration
   cancel-in-progress: false
 
-env:
-  REGISTRY: ghcr.io
-  REPO: ${{ github.repository }}
-
 jobs:
   deploy-integration:
     if: github.event.workflow_run.conclusion == 'success'
@@ -22,8 +18,15 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
-      - name: Set lowercase repo
-        run: echo "REPO=$(echo ${{ env.REPO }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+      - name: Copy compose file to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST_INT }}
+          username: ${{ secrets.VM_USER_INT }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_INT }}
+          source: "docker-compose.integration.yml"
+          target: "/opt/app/"
+          overwrite: true
 
       - name: Deploy to integration VM
         uses: appleboy/ssh-action@v1
@@ -34,17 +37,17 @@ jobs:
           script: |
             set -e
             cd /opt/app
+            mv docker-compose.integration.yml docker-compose.yml
 
             # Save current image digests for rollback
             docker compose --profile mysql ps -q | xargs -r docker inspect --format='{{.Image}}' > /tmp/previous-images.txt || true
 
-            # Pull latest images
+            # Pull latest images from GHCR
             echo "Pulling latest images..."
-            docker compose --profile mysql pull 2>/dev/null || true
+            docker compose --profile mysql pull
 
-            # Update code and rebuild
-            git pull origin main
-            docker compose --profile mysql up --build -d
+            # Start services
+            docker compose --profile mysql up -d
 
             # Wait for services to be healthy
             echo "Waiting for services to be healthy..."
@@ -87,9 +90,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY_INT }}
           script: |
             cd /opt/app
-            echo "Rolling back..."
-            git checkout HEAD~1
-            docker compose --profile mysql up --build -d
+            echo "Rolling back to previous images..."
+            docker compose --profile mysql down
+            docker compose --profile mysql up -d
             echo "Rollback complete"
 
       - name: Deployment summary
