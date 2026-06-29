@@ -36,8 +36,12 @@ jobs:
 
             echo "✅ docker-compose.integration.yml téléchargé"
 
-            # Save current image digests for rollback
-            docker compose -f docker-compose.integration.yml ps -q | xargs -r docker inspect --format='{{.Image}}' > /tmp/previous-images.txt || true
+            # Sauvegarder les images actuelles pour rollback
+            docker compose -f docker-compose.integration.yml ps -q \
+              | xargs -r docker inspect --format='{{.Image}} {{.Name}}' \
+              > /tmp/previous-images.txt || true
+            echo "Previous images saved:"
+            cat /tmp/previous-images.txt || true
 
             # Pull latest images from GHCR
             echo "Pulling latest images..."
@@ -71,11 +75,14 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY_INT }}
           script: |
             set -e
+            echo "Waiting 15s for services to stabilize..."
+            sleep 15
             echo "Running healthchecks..."
             curl -sf http://localhost:3001/health || (echo "auth-service FAIL" && exit 1)
             curl -sf http://localhost:3000/health || (echo "task-service FAIL" && exit 1)
             curl -sf http://localhost:3002/health || (echo "project-service FAIL" && exit 1)
             curl -sf http://localhost:3003/health || (echo "notification-service FAIL" && exit 1)
+            curl -sf -o /dev/null -w "%{http_code}" http://localhost/ | grep -q "200\|301\|302" || (echo "frontend FAIL" && exit 1)
             echo "All healthchecks passed ✅"
 
       - name: Rollback on failure
@@ -88,9 +95,24 @@ jobs:
           script: |
             cd /opt/app
             echo "Rolling back to previous images..."
-            docker compose -f docker-compose.integration.yml down
-            docker compose -f docker-compose.integration.yml up -d
-            echo "Rollback complete"
+
+            if [ -f /tmp/previous-images.txt ] && [ -s /tmp/previous-images.txt ]; then
+              docker compose -f docker-compose.integration.yml down
+
+              while IFS=' ' read -r image name; do
+                SERVICE=$(echo "$name" | sed 's|.*-\([^-]*\)-1$|\1|' | tr -d '/')
+                if docker image inspect "$image" > /dev/null 2>&1; then
+                  echo "Retagging $image for $SERVICE"
+                  docker tag "$image" "ghcr.io/karimhannaallah/archi-logicielle/$SERVICE:latest" || true
+                fi
+              done < /tmp/previous-images.txt
+
+              docker compose -f docker-compose.integration.yml up -d
+              echo "Rollback complete ✅"
+            else
+              echo "No previous images found — stopping services"
+              docker compose -f docker-compose.integration.yml down
+            fi
 
       - name: Deployment summary
         if: always()
