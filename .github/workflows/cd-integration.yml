@@ -1,6 +1,7 @@
 name: CD — Integration
 
 on:
+  workflow_dispatch:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
@@ -12,7 +13,7 @@ concurrency:
 
 jobs:
   deploy-integration:
-    if: github.event.workflow_run.conclusion == 'success'
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment: integration
     steps:
