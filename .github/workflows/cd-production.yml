@@ -35,25 +35,20 @@ jobs:
             set -e
             cd /opt/app
 
-            # Télécharger le fichier compose depuis GitHub
             curl -sf \
               "https://raw.githubusercontent.com/KarimHannaallah/Archi-logicielle/main/docker-compose.production.yml" \
               -o docker-compose.production.yml
-
             echo "✅ docker-compose.production.yml téléchargé"
 
-            # Sauvegarder les images actuelles pour rollback
             docker compose -f docker-compose.production.yml ps -q \
               | xargs -r docker inspect --format='{{.Image}} {{.Name}}' \
               > /tmp/previous-images.txt || true
             echo "Previous images saved:"
             cat /tmp/previous-images.txt || true
 
-            # Pull versioned images from GHCR
             echo "Pulling images with tag: $VERSION"
             VERSION=$VERSION docker compose -f docker-compose.production.yml pull
 
-            # Sequential service restart
             SERVICES="auth-service task-service project-service notification-service frontend"
 
             for SVC in $SERVICES; do
@@ -87,14 +82,41 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
           script: |
             set -e
-            echo "Waiting 15s for services to stabilize..."
-            sleep 15
-            echo "Running production healthchecks..."
-            curl -sf http://localhost:3001/health || (echo "auth-service FAIL" && exit 1)
-            curl -sf http://localhost:3000/health || (echo "task-service FAIL" && exit 1)
-            curl -sf http://localhost:3002/health || (echo "project-service FAIL" && exit 1)
-            curl -sf http://localhost:3003/health || (echo "notification-service FAIL" && exit 1)
-            curl -sf -o /dev/null -w "%{http_code}" http://localhost/ | grep -q "200\|301\|302" || (echo "frontend FAIL" && exit 1)
+            echo "Waiting for all services to be ready..."
+
+            check_service() {
+              local url=$1
+              local name=$2
+              for i in $(seq 1 12); do
+                if curl -sf "$url" > /dev/null 2>&1; then
+                  echo "  $name ready after ${i}x5s ✅"
+                  return 0
+                fi
+                echo "  $name not ready yet (attempt $i/12)..."
+                sleep 5
+              done
+              echo "$name FAIL — timeout"
+              return 1
+            }
+
+            check_service http://localhost:3001/health "auth-service"
+            check_service http://localhost:3000/health "task-service"
+            check_service http://localhost:3002/health "project-service"
+            check_service http://localhost:3003/health "notification-service"
+
+            for i in $(seq 1 12); do
+              CODE=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost/ 2>/dev/null || echo "000")
+              if echo "$CODE" | grep -q "200\|301\|302"; then
+                echo "  frontend ready ✅"
+                break
+              fi
+              echo "  frontend not ready yet ($CODE) (attempt $i/12)..."
+              sleep 5
+              if [ "$i" -eq "12" ]; then
+                echo "frontend FAIL" && exit 1
+              fi
+            done
+
             echo "All production healthchecks passed ✅"
 
       - name: Rollback on failure
@@ -121,7 +143,7 @@ jobs:
                 fi
               done < /tmp/previous-images.txt
 
-              PREV_VERSION=$(cat /tmp/previous-images.txt | grep 'archi-logicielle' | head -1 | grep -o '[^:]*$' || echo "latest")
+              PREV_VERSION=$(grep 'archi-logicielle' /tmp/previous-images.txt | head -1 | grep -o '[^:]*$' || echo "latest")
               echo "Rolling back to version: $PREV_VERSION"
               VERSION=$PREV_VERSION docker compose -f docker-compose.production.yml up -d
               echo "Rollback complete ✅"
