@@ -10,6 +10,10 @@ export default defineConfig({
                 target: 'http://localhost:3000',
                 rewrite: (path) => path.replace(/^\/api/, ''),
             },
+            '/api/auth/v1': {
+                target: 'http://localhost:3001',
+                rewrite: (path) => path.replace(/^\/api\/auth\/v1/, '/v1/auth'),
+            },
             '/api/auth': {
                 target: 'http://localhost:3001',
                 rewrite: (path) => path.replace(/^\/api/, ''),

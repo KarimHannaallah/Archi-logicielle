@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import type { AuthService } from './domain/AuthService';
 import { makeAuthRouter } from './routes/auth';
+const { version } = require('../package.json');
 
 export function createApp(authService: AuthService) {
     const app = express();
@@ -10,7 +11,12 @@ export function createApp(authService: AuthService) {
         credentials: true,
     }));
     app.use(express.json());
-    app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'auth-service' }));
+    app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'auth-service', version }));
+    app.get('/version', (_req, res) => res.json({ service: 'auth-service', version }));
+
+    // v1 routes
+    app.use('/v1/auth', makeAuthRouter(authService));
+    // legacy (unversioned) — backward compatibility
     app.use('/auth', makeAuthRouter(authService));
     return app;
 }

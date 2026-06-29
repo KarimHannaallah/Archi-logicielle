@@ -4,6 +4,7 @@
   "workspaces": [
     "frontend",
     "packages/shared-auth",
+    "packages/shared-db",
     "services/auth-service",
     "services/task-service",
     "services/project-service",
@@ -21,6 +22,7 @@
     "node": ">=24"
   },
   "devDependencies": {
-    "@types/jest": "^30.0.0"
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.0.1"
   }
 }

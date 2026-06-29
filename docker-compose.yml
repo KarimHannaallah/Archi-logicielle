@@ -23,8 +23,16 @@ services:
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
       - CORS_ORIGIN=http://localhost
       - PORT=3001
+      - MYSQL_HOST=${MYSQL_HOST:-}
+      - MYSQL_USER=${MYSQL_USER:-}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-}
+      - MYSQL_DB=${MYSQL_DB:-}
     volumes:
       - auth-data:/data
+    depends_on:
+      mysql:
+        condition: service_healthy
+        required: false
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
       interval: 5s
@@ -48,6 +56,10 @@ services:
       - AUTH_SERVICE_URL=http://auth-service:3001
       - PORT=3000
       - REDIS_HOST=redis
+      - MYSQL_HOST=${MYSQL_HOST:-}
+      - MYSQL_USER=${MYSQL_USER:-}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-}
+      - MYSQL_DB=${MYSQL_DB:-}
     volumes:
       - task-data:/data
     depends_on:
@@ -55,7 +67,16 @@ services:
         condition: service_healthy
       auth-service:
         condition: service_healthy
-
+      mysql:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s    
+  
   project-service:
     build:
       context: .
@@ -71,6 +92,10 @@ services:
       - AUTH_SERVICE_URL=http://auth-service:3001
       - PORT=3002
       - REDIS_HOST=redis
+      - MYSQL_HOST=${MYSQL_HOST:-}
+      - MYSQL_USER=${MYSQL_USER:-}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-}
+      - MYSQL_DB=${MYSQL_DB:-}
     volumes:
       - project-data:/data
     depends_on:
@@ -78,6 +103,15 @@ services:
         condition: service_healthy
       auth-service:
         condition: service_healthy
+      mysql:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3002/health').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
 
   notification-service:
     build:
@@ -98,6 +132,12 @@ services:
         condition: service_healthy
       auth-service:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3003/health').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
 
   frontend:
     build:
@@ -109,11 +149,11 @@ services:
       auth-service:
         condition: service_healthy
       task-service:
-        condition: service_started
+        condition: service_healthy
       project-service:
-        condition: service_started
+        condition: service_healthy
       notification-service:
-        condition: service_started
+        condition: service_healthy
 
   mysql:
     image: mysql:8
