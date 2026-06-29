@@ -17,17 +17,18 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@archi/shared-auth": "file:../../packages/shared-auth",
+    "@archi/shared-db": "file:../../packages/shared-db",
     "cors": "^2.8.5",
     "express": "^4.18.2",
+    "express-rate-limit": "^7.5.0",
     "ioredis": "^5.10.0",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.22.3",
+    "sql-escaper": "^1.3.3",
     "sqlite3": "^5.1.2",
-    "uuid": "^9.0.0",
     "ts-node": "^10.9.2",
-    "@archi/shared-auth": "file:../../packages/shared-auth",
-    "@archi/shared-db": "file:../../packages/shared-db",
-    "express-rate-limit": "^7.5.0",
+    "uuid": "^9.0.0",
     "wait-port": "^1.0.4"
   },
   "jest": {
@@ -36,10 +37,14 @@
       "^.+\\.ts$": "ts-jest",
       "^.+\\.js$": "babel-jest"
     },
-    "moduleFileExtensions": ["ts", "js", "json"],
+    "moduleFileExtensions": [
+      "ts",
+      "js",
+      "json"
+    ],
     "moduleNameMapper": {
-        "^@archi/shared-auth$": "<rootDir>/../../packages/shared-auth/src/index.ts",
-        "^@archi/shared-db$": "<rootDir>/../../packages/shared-db/src/migrator.ts"
+      "^@archi/shared-auth$": "<rootDir>/../../packages/shared-auth/src/index.ts",
+      "^@archi/shared-db$": "<rootDir>/../../packages/shared-db/src/migrator.ts"
     },
     "collectCoverageFrom": [
       "src/**/*.ts",
@@ -47,10 +52,13 @@
     ],
     "reporters": [
       "default",
-      ["jest-junit", {
-        "outputDirectory": "test-results",
-        "outputName": "junit.xml"
-      }]
+      [
+        "jest-junit",
+        {
+          "outputDirectory": "test-results",
+          "outputName": "junit.xml"
+        }
+      ]
     ]
   },
   "prettier": {

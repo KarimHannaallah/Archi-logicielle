@@ -24,6 +24,8 @@ export function createApp(projectService: ProjectService, options?: AppOptions) 
     const app = express();
     app.use(express.json());
 
+    app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+    
     if (options?.enableAuth === false) {
         app.get('/projects', makeGetProjects(projectService));
         app.get('/projects/:id', makeGetProject(projectService));

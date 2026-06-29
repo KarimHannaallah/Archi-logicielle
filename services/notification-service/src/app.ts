@@ -16,6 +16,8 @@ export function createApp() {
     const app = express();
     app.use(express.json());
 
+    app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+    
     app.get('/notifications', apiLimiter, authMiddleware, makeGetNotifications());
     app.put('/notifications/read', apiLimiter, authMiddleware, makeMarkNotificationsRead());
 

@@ -29,6 +29,8 @@ export function createApp(todoService: TodoService, options?: AppOptions) {
     }));
     app.use(express.json());
 
+    app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+
     if (options?.enableAuth === false) {
         app.get('/items', makeGetItems(todoService));
         app.post('/items', makeAddItem(todoService));
