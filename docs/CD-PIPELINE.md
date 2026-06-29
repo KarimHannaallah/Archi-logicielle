@@ -2,21 +2,31 @@
 
 ## Vue d'ensemble
 
-Le deploiement continu s'appuie sur deux workflows GitHub Actions distincts, chacun cible un environnement specifique.
+Le deploiement continu s'appuie sur deux workflows GitHub Actions distincts. Les VMs ne clonent pas le repo — elles utilisent des images Docker pre-construites depuis GHCR.
 
 ```
 CI (main) ──success──> cd-integration.yml ──auto──> VM integration
-                                                       │
-                                                  healthcheck
-                                                       │
-                                              rollback si echec
+                           │                            │
+                      SCP compose file            docker compose pull
+                                                        │
+                                                   healthcheck
+                                                        │
+                                               rollback si echec
 
 workflow_dispatch ──confirm='deploy'──> cd-production.yml ──> VM production
-                                                                  │
-                                                          restart sequentiel
-                                                                  │
-                                                         rollback si echec
+                                            │                      │
+                                       SCP compose file      pull + restart sequentiel
+                                                                   │
+                                                          rollback si echec
 ```
+
+## Fichiers compose
+
+| Fichier                  | Usage                          |
+|--------------------------|--------------------------------|
+| `docker-compose.yml`     | Dev local (build depuis source)|
+| `docker-compose.int.yml` | VM integration (images GHCR)   |
+| `docker-compose.prod.yml`| VM production (images GHCR + restart: always) |
 
 ## cd-integration.yml
 
@@ -29,14 +39,15 @@ workflow_dispatch ──confirm='deploy'──> cd-production.yml ──> VM pro
 ### Etapes
 
 1. **Checkout** du code source
-2. **SSH vers la VM** d'integration :
+2. **SCP** du fichier `docker-compose.int.yml` vers la VM
+3. **SSH vers la VM** d'integration :
    - Sauvegarde des images Docker courantes (rollback)
-   - `git pull origin main`
-   - `docker compose --profile mysql up --build -d`
+   - `docker compose pull` (images GHCR)
+   - `docker compose up -d`
    - Attente de 4 services healthy (30 tentatives, 10s d'intervalle)
-3. **Healthcheck post-deploiement** : curl sur `/health` de chaque service (ports 3001, 3000, 3002, 3003)
-4. **Rollback automatique** si echec : `git checkout HEAD~1` + rebuild
-5. **Resume** dans `$GITHUB_STEP_SUMMARY`
+4. **Healthcheck post-deploiement** : curl sur `/health` de chaque service (ports 3001, 3000, 3002, 3003)
+5. **Rollback automatique** si echec : redemarrage avec les images precedentes
+6. **Resume** dans `$GITHUB_STEP_SUMMARY`
 
 ### Secrets requis
 
@@ -58,14 +69,15 @@ workflow_dispatch ──confirm='deploy'──> cd-production.yml ──> VM pro
 ### Etapes
 
 1. **Checkout** du code source
-2. **SSH vers la VM** de production :
-   - Sauvegarde du commit courant et des images Docker
-   - `git pull origin main`
-   - Redemarrage sequentiel de chaque service (auth → task → project → notification → frontend)
+2. **SCP** du fichier `docker-compose.prod.yml` vers la VM
+3. **SSH vers la VM** de production :
+   - Sauvegarde des images Docker courantes
+   - `docker compose pull` (images GHCR)
+   - Redemarrage sequentiel de chaque service (auth -> task -> project -> notification -> frontend)
    - Chaque service est attendu healthy avant de passer au suivant (20 tentatives, 10s)
-3. **Healthcheck post-deploiement** : curl sur `/health` de chaque service + frontend sur port 80
-4. **Rollback automatique** si echec : retour au commit sauvegarde + rebuild complet
-5. **Resume** dans `$GITHUB_STEP_SUMMARY`
+4. **Healthcheck post-deploiement** : curl sur `/health` de chaque service + frontend sur port 80
+5. **Rollback automatique** si echec : redemarrage avec les images precedentes
+6. **Resume** dans `$GITHUB_STEP_SUMMARY`
 
 ### Secrets requis
 
@@ -79,8 +91,8 @@ workflow_dispatch ──confirm='deploy'──> cd-production.yml ──> VM pro
 
 | Environnement | Strategie                                                    |
 |---------------|--------------------------------------------------------------|
-| Integration   | `git checkout HEAD~1` + `docker compose up --build -d`       |
-| Production    | Retour au commit sauvegarde avant deploiement + rebuild      |
+| Integration   | `docker compose down` + `docker compose up -d` (images precedentes en cache) |
+| Production    | Meme strategie, les images precedentes restent en cache local |
 
 ## Ordre de deploiement (production)
 
@@ -91,6 +103,13 @@ Le redemarrage sequentiel minimise le downtime :
 3. `project-service`
 4. `notification-service`
 5. `frontend`
+
+## Prerequis sur les VMs
+
+1. Docker + Docker Compose installes
+2. `/opt/app/.env` cree avec `JWT_SECRET`, `MYSQL_*`, `REDIS_*`
+3. Ports ouverts : 80, 3000-3003
+4. Acces SSH configure (cle dans les secrets GitHub)
 
 ## Lien avec la CI
 
