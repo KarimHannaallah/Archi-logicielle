@@ -64,7 +64,7 @@ jobs:
               sleep 10
             done
 
-            echo "All services healthy"
+            echo "All services healthy ✅"
             docker compose -f docker-compose.integration.yml ps
 
       - name: Post-deploy healthcheck
