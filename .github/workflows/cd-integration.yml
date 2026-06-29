@@ -38,6 +38,7 @@ jobs:
           script: |
             set -e
             cd /opt/app
+            mv docker-compose.integration.yml docker-compose.yml
 
             # Save current image digests for rollback
             docker compose -f docker-compose.integration.yml ps -q | xargs -r docker inspect --format='{{.Image}}' > /tmp/previous-images.txt || true

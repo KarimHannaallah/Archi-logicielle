@@ -44,6 +44,7 @@ jobs:
           script: |
             set -e
             cd /opt/app
+            mv docker-compose.production.yml docker-compose.yml
 
             # Save current images for rollback
             docker compose -f docker-compose.production.yml ps -q | xargs -r docker inspect --format='{{index .Config.Image}}' > /tmp/previous-images.txt 2>/dev/null || true
