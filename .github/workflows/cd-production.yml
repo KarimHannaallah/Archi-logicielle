@@ -42,8 +42,12 @@ jobs:
 
             echo "✅ docker-compose.production.yml téléchargé"
 
-            # Save current images for rollback
-            docker compose -f docker-compose.production.yml ps -q | xargs -r docker inspect --format='{{index .Config.Image}}' > /tmp/previous-images.txt 2>/dev/null || true
+            # Sauvegarder les images actuelles pour rollback
+            docker compose -f docker-compose.production.yml ps -q \
+              | xargs -r docker inspect --format='{{.Image}} {{.Name}}' \
+              > /tmp/previous-images.txt || true
+            echo "Previous images saved:"
+            cat /tmp/previous-images.txt || true
 
             # Pull versioned images from GHCR
             echo "Pulling images with tag: $VERSION"
@@ -83,12 +87,14 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
           script: |
             set -e
+            echo "Waiting 15s for services to stabilize..."
+            sleep 15
             echo "Running production healthchecks..."
             curl -sf http://localhost:3001/health || (echo "auth-service FAIL" && exit 1)
             curl -sf http://localhost:3000/health || (echo "task-service FAIL" && exit 1)
             curl -sf http://localhost:3002/health || (echo "project-service FAIL" && exit 1)
             curl -sf http://localhost:3003/health || (echo "notification-service FAIL" && exit 1)
-            curl -sf http://localhost/             || (echo "frontend FAIL" && exit 1)
+            curl -sf -o /dev/null -w "%{http_code}" http://localhost/ | grep -q "200\|301\|302" || (echo "frontend FAIL" && exit 1)
             echo "All production healthchecks passed ✅"
 
       - name: Rollback on failure
@@ -102,9 +108,27 @@ jobs:
           script: |
             cd /opt/app
             echo "Rolling back to previous images..."
-            docker compose -f docker-compose.production.yml down
-            docker compose -f docker-compose.production.yml up -d
-            echo "Rollback complete"
+
+            if [ -f /tmp/previous-images.txt ] && [ -s /tmp/previous-images.txt ]; then
+              docker compose -f docker-compose.production.yml down
+
+              while IFS=' ' read -r image name; do
+                SERVICE=$(echo "$name" | sed 's|.*-\([^-]*\)-1$|\1|' | tr -d '/')
+                if docker image inspect "$image" > /dev/null 2>&1; then
+                  echo "Retagging $image for $SERVICE"
+                  VERSION_OLD=$(echo "$image" | grep -o '[^:]*$')
+                  docker tag "$image" "ghcr.io/karimhannaallah/archi-logicielle/$SERVICE:$VERSION_OLD" || true
+                fi
+              done < /tmp/previous-images.txt
+
+              PREV_VERSION=$(cat /tmp/previous-images.txt | grep 'archi-logicielle' | head -1 | grep -o '[^:]*$' || echo "latest")
+              echo "Rolling back to version: $PREV_VERSION"
+              VERSION=$PREV_VERSION docker compose -f docker-compose.production.yml up -d
+              echo "Rollback complete ✅"
+            else
+              echo "No previous images found — stopping services"
+              docker compose -f docker-compose.production.yml down
+            fi
 
       - name: Deployment summary
         if: always()
