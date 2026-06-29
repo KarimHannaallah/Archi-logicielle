@@ -189,10 +189,60 @@ jobs:
         continue-on-error: true
       - run: npm run build -w frontend
 
+  # ── Étape 2b — Tests d'intégration (docker compose) ───────────────────────
+
+  integration-tests:
+    needs: [build-services, build-frontend]
+    if: |
+      always() &&
+      needs.build-services.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Build and start all services
+        run: |
+          cp .env.example .env
+          docker compose --profile mysql up --build -d
+        timeout-minutes: 5
+      - name: Wait for services to be healthy
+        run: |
+          echo "Waiting for services..."
+          for i in $(seq 1 30); do
+            HEALTHY=$(docker compose --profile mysql ps --format json | grep -c '"healthy"' || true)
+            echo "  healthy: $HEALTHY/4 (attempt $i)"
+            [ "$HEALTHY" -ge 4 ] && break
+            sleep 5
+          done
+          docker compose --profile mysql ps
+      - name: Run integration healthchecks
+        run: |
+          set -e
+          echo "Testing auth-service..."
+          docker compose exec -T auth-service wget -qO- http://localhost:3001/health
+          echo ""
+          echo "Testing task-service..."
+          docker compose exec -T task-service wget -qO- http://localhost:3000/health
+          echo ""
+          echo "Testing project-service..."
+          docker compose exec -T project-service wget -qO- http://localhost:3002/health
+          echo ""
+          echo "Testing notification-service..."
+          docker compose exec -T notification-service wget -qO- http://localhost:3003/health
+          echo ""
+          echo "All integration healthchecks passed"
+      - name: Check compatibility labels
+        run: bash .github/scripts/check-compatibility.sh
+      - name: Dump logs on failure
+        if: failure()
+        run: docker compose --profile mysql logs --tail=50
+      - name: Cleanup
+        if: always()
+        run: docker compose --profile mysql down -v
+
   # ── Étape 3 — Qualité du code ────────────────────────────────────────────────
 
   sonarqube:
-    needs: [build-services, build-frontend]
+    needs: [build-services, build-frontend, integration-tests]
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
