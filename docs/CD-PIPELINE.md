@@ -42,10 +42,9 @@ workflow_dispatch ──confirm='deploy'──> cd-production.yml ──> VM pro
 
 | Secret                 | Description                        |
 |------------------------|------------------------------------|
-| `INTEGRATION_HOST`     | Adresse IP/DNS de la VM            |
-| `INTEGRATION_USER`     | Utilisateur SSH                    |
-| `INTEGRATION_SSH_KEY`  | Cle privee SSH                     |
-| `INTEGRATION_APP_DIR`  | Repertoire de l'application        |
+| `VM_HOST_INT`          | Adresse IP/DNS de la VM            |
+| `VM_USER_INT`          | Utilisateur SSH                    |
+| `SSH_PRIVATE_KEY_INT`  | Cle privee SSH                     |
 
 ## cd-production.yml
 
@@ -70,12 +69,11 @@ workflow_dispatch ──confirm='deploy'──> cd-production.yml ──> VM pro
 
 ### Secrets requis
 
-| Secret                | Description                        |
-|-----------------------|------------------------------------|
-| `PRODUCTION_HOST`     | Adresse IP/DNS de la VM            |
-| `PRODUCTION_USER`     | Utilisateur SSH                    |
-| `PRODUCTION_SSH_KEY`  | Cle privee SSH                     |
-| `PRODUCTION_APP_DIR`  | Repertoire de l'application        |
+| Secret                 | Description                        |
+|------------------------|------------------------------------|
+| `VM_HOST_PROD`         | Adresse IP/DNS de la VM            |
+| `VM_USER_PROD`         | Utilisateur SSH                    |
+| `SSH_PRIVATE_KEY_PROD` | Cle privee SSH                     |
 
 ## Strategie de rollback
 

@@ -26,13 +26,13 @@ jobs:
       - name: Deploy to production VM (sequential)
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.PRODUCTION_HOST }}
-          username: ${{ secrets.PRODUCTION_USER }}
-          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          host: ${{ secrets.VM_HOST_PROD }}
+          username: ${{ secrets.VM_USER_PROD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
           command_timeout: 10m
           script: |
             set -e
-            cd ${{ secrets.PRODUCTION_APP_DIR || '/opt/app' }}
+            cd /opt/app
 
             # Save current state for rollback
             PREVIOUS_COMMIT=$(git rev-parse HEAD)
@@ -70,9 +70,9 @@ jobs:
       - name: Post-deploy healthcheck
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.PRODUCTION_HOST }}
-          username: ${{ secrets.PRODUCTION_USER }}
-          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          host: ${{ secrets.VM_HOST_PROD }}
+          username: ${{ secrets.VM_USER_PROD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
           script: |
             set -e
             echo "Running production healthchecks..."
@@ -87,12 +87,12 @@ jobs:
         if: failure()
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.PRODUCTION_HOST }}
-          username: ${{ secrets.PRODUCTION_USER }}
-          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          host: ${{ secrets.VM_HOST_PROD }}
+          username: ${{ secrets.VM_USER_PROD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
           command_timeout: 10m
           script: |
-            cd ${{ secrets.PRODUCTION_APP_DIR || '/opt/app' }}
+            cd /opt/app
             echo "Rolling back to previous commit..."
             PREVIOUS_COMMIT=$(cat /tmp/rollback-commit.txt 2>/dev/null || echo "HEAD~1")
             git checkout "$PREVIOUS_COMMIT"
