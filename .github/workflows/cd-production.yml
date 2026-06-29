@@ -1,15 +1,8 @@
 name: CD — Production
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: "Version tag to deploy (e.g. sha-abc1234 or 1.0.0)"
-        required: false
-        default: "latest"
-      confirm:
-        description: "Type 'deploy' to confirm production deployment"
-        required: true
+  release:
+    types: [published]
 
 concurrency:
   group: cd-production
@@ -17,11 +10,28 @@ concurrency:
 
 jobs:
   deploy-production:
-    if: github.event.inputs.confirm == 'deploy'
     runs-on: ubuntu-latest
     environment: production
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Extract version from release tag
+        id: version
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Deploying version: $VERSION"
+
+      - name: Copy compose file to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VM_HOST_PROD }}
+          username: ${{ secrets.VM_USER_PROD }}
+          key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
+          source: "docker-compose.production.yml"
+          target: "/opt/app/"
+          overwrite: true
 
       - name: Deploy to production VM (sequential)
         uses: appleboy/ssh-action@v1
@@ -30,24 +40,26 @@ jobs:
           username: ${{ secrets.VM_USER_PROD }}
           key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
           command_timeout: 10m
+          envs: VERSION
           script: |
             set -e
             cd /opt/app
+            mv docker-compose.production.yml docker-compose.yml
 
-            # Save current state for rollback
-            PREVIOUS_COMMIT=$(git rev-parse HEAD)
-            echo "$PREVIOUS_COMMIT" > /tmp/rollback-commit.txt
+            # Save current images for rollback
             docker compose --profile mysql ps -q | xargs -r docker inspect --format='{{index .Config.Image}}' > /tmp/previous-images.txt 2>/dev/null || true
 
-            # Pull latest code
-            git pull origin main
+            # Pull versioned images from GHCR
+            export VERSION=$VERSION
+            echo "Pulling images with tag: $VERSION"
+            docker compose --profile mysql pull
 
             # Sequential service restart (one at a time to minimize downtime)
             SERVICES="auth-service task-service project-service notification-service frontend"
 
             for SVC in $SERVICES; do
               echo "=== Deploying $SVC ==="
-              docker compose --profile mysql up --build -d --no-deps "$SVC"
+              docker compose --profile mysql up -d --no-deps "$SVC"
 
               # Wait for this service to be healthy
               RETRIES=20
@@ -66,6 +78,8 @@ jobs:
 
             echo "All services deployed"
             docker compose --profile mysql ps
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
 
       - name: Post-deploy healthcheck
         uses: appleboy/ssh-action@v1
@@ -93,17 +107,17 @@ jobs:
           command_timeout: 10m
           script: |
             cd /opt/app
-            echo "Rolling back to previous commit..."
-            PREVIOUS_COMMIT=$(cat /tmp/rollback-commit.txt 2>/dev/null || echo "HEAD~1")
-            git checkout "$PREVIOUS_COMMIT"
-            docker compose --profile mysql up --build -d
-            echo "Rollback complete — reverted to $PREVIOUS_COMMIT"
+            echo "Rolling back to previous images..."
+            docker compose --profile mysql down
+            docker compose --profile mysql up -d
+            echo "Rollback complete"
 
       - name: Deployment summary
         if: always()
         run: |
           echo "## CD Production" >> $GITHUB_STEP_SUMMARY
           echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** ${{ github.event.inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Release:** ${{ github.event.release.tag_name }}" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY

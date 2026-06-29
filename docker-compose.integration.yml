@@ -1,0 +1,171 @@
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  auth-service:
+    image: ghcr.io/karimhannaallah/projet-archi/auth-service:latest
+    ports:
+      - "3001:3001"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - SQLITE_DB_LOCATION=/data/auth.db
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - CORS_ORIGIN=http://localhost
+      - PORT=3001
+      - MYSQL_HOST=${MYSQL_HOST:-}
+      - MYSQL_USER=${MYSQL_USER:-}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-}
+      - MYSQL_DB=${MYSQL_DB:-}
+    volumes:
+      - auth-data:/data
+    depends_on:
+      mysql:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+
+  task-service:
+    image: ghcr.io/karimhannaallah/projet-archi/task-service:latest
+    ports:
+      - "3000:3000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - SQLITE_DB_LOCATION=/data/task.db
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - CORS_ORIGIN=http://localhost
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - PORT=3000
+      - REDIS_HOST=redis
+      - MYSQL_HOST=${MYSQL_HOST:-}
+      - MYSQL_USER=${MYSQL_USER:-}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-}
+      - MYSQL_DB=${MYSQL_DB:-}
+    volumes:
+      - task-data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+
+  project-service:
+    image: ghcr.io/karimhannaallah/projet-archi/project-service:latest
+    ports:
+      - "3002:3002"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - SQLITE_DB_LOCATION=/data/project.db
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - PORT=3002
+      - REDIS_HOST=redis
+      - MYSQL_HOST=${MYSQL_HOST:-}
+      - MYSQL_USER=${MYSQL_USER:-}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-}
+      - MYSQL_DB=${MYSQL_DB:-}
+    volumes:
+      - project-data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+        required: false
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3002/health').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+
+  notification-service:
+    image: ghcr.io/karimhannaallah/projet-archi/notification-service:latest
+    ports:
+      - "3003:3003"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - REDIS_HOST=redis
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - PORT=3003
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+    depends_on:
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3003/health').then(r=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
+
+  frontend:
+    image: ghcr.io/karimhannaallah/projet-archi/frontend:latest
+    ports:
+      - "80:80"
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      task-service:
+        condition: service_healthy
+      project-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8
+    profiles: ["mysql"]
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: ${MYSQL_DB:-todos}
+      MYSQL_USER: ${MYSQL_USER:-todo}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-todopass}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-utodo", "-ptodopass"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  auth-data:
+  task-data:
+  project-data:
+  mysql-data:
