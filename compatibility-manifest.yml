@@ -1,0 +1,8 @@
+releases:
+  - version: "2026-06-29"
+    services:
+      auth-service: v1.0.0
+      task-service: v1.0.0
+      project-service: v1.0.0
+      notification-service: v1.0.0
+    api-gateway-version: v1

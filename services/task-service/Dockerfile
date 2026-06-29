@@ -11,5 +11,8 @@ COPY services/task-service/src/ services/task-service/src/
 COPY services/task-service/migrations/ services/task-service/migrations/
 COPY services/task-service/tsconfig.json services/task-service/
 WORKDIR /app/services/task-service
+LABEL provides.api-version="v1" \
+      provides.service="task-service" \
+      requires.auth-service=">=1.0.0"
 EXPOSE 3000
 CMD ["npx", "ts-node", "src/index.ts"]
