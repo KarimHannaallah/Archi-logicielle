@@ -360,10 +360,52 @@ jobs:
           sarif_file: trivy-results.sarif
         continue-on-error: true
 
+  # ── Étape 6 — Mise à jour du manifeste de compatibilité ────────────────────
+
+  update-compatibility-manifest:
+    needs: [build-services, docker-build]
+    if: github.ref == 'refs/heads/main' && needs.build-services.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update compatibility manifest
+        run: |
+          DATE=$(date +%Y-%m-%d)
+          AUTH_V=$(node -p "require('./services/auth-service/package.json').version")
+          TASK_V=$(node -p "require('./services/task-service/package.json').version")
+          PROJ_V=$(node -p "require('./services/project-service/package.json').version")
+          NOTIF_V=$(node -p "require('./services/notification-service/package.json').version")
+
+          cat > compatibility-manifest.yml <<EOF
+          releases:
+            - version: "${DATE}"
+              services:
+                auth-service: v${AUTH_V}
+                task-service: v${TASK_V}
+                project-service: v${PROJ_V}
+                notification-service: v${NOTIF_V}
+              api-gateway-version: v1
+          EOF
+          sed -i 's/^          //' compatibility-manifest.yml
+
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add compatibility-manifest.yml
+          git diff --cached --quiet || git commit -m "ci: update compatibility manifest [skip ci]"
+          git push || true
+
   # ── Résumé ───────────────────────────────────────────────────────────────────
 
   pipeline-summary:
-    needs: [build-services, build-frontend, sonarqube, docker-build, hadolint, trivy, validate-compose, gitleaks, license-check]
+    needs: [build-services, build-frontend, sonarqube, docker-build, hadolint, trivy, validate-compose, gitleaks, license-check, update-compatibility-manifest]
     if: always()
     runs-on: ubuntu-latest
     steps:
