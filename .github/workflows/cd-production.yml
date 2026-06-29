@@ -47,24 +47,22 @@ jobs:
             mv docker-compose.production.yml docker-compose.yml
 
             # Save current images for rollback
-            docker compose --profile mysql ps -q | xargs -r docker inspect --format='{{index .Config.Image}}' > /tmp/previous-images.txt 2>/dev/null || true
+            docker compose -f docker-compose.production.yml ps -q | xargs -r docker inspect --format='{{index .Config.Image}}' > /tmp/previous-images.txt 2>/dev/null || true
 
             # Pull versioned images from GHCR
-            export VERSION=$VERSION
             echo "Pulling images with tag: $VERSION"
-            docker compose --profile mysql pull
+            VERSION=$VERSION docker compose -f docker-compose.production.yml pull
 
-            # Sequential service restart (one at a time to minimize downtime)
+            # Sequential service restart
             SERVICES="auth-service task-service project-service notification-service frontend"
 
             for SVC in $SERVICES; do
               echo "=== Deploying $SVC ==="
-              docker compose --profile mysql up -d --no-deps "$SVC"
+              VERSION=$VERSION docker compose -f docker-compose.production.yml up -d --no-deps "$SVC"
 
-              # Wait for this service to be healthy
               RETRIES=20
               for i in $(seq 1 $RETRIES); do
-                STATUS=$(docker compose --profile mysql ps "$SVC" --format json | grep -o '"healthy"\|"running"' | head -1 || echo "unknown")
+                STATUS=$(docker compose -f docker-compose.production.yml ps "$SVC" --format json | grep -o '"healthy"\|"running"' | head -1 || echo "unknown")
                 echo "  $SVC: $STATUS (attempt $i/$RETRIES)"
                 [ "$STATUS" = '"healthy"' ] || [ "$STATUS" = '"running"' ] && break
                 if [ "$i" -eq "$RETRIES" ]; then
@@ -73,11 +71,11 @@ jobs:
                 fi
                 sleep 10
               done
-              echo "$SVC deployed successfully"
+              echo "$SVC deployed successfully ✅"
             done
 
-            echo "All services deployed"
-            docker compose --profile mysql ps
+            echo "All services deployed ✅"
+            docker compose -f docker-compose.production.yml ps
         env:
           VERSION: ${{ steps.version.outputs.version }}
 
@@ -94,8 +92,8 @@ jobs:
             curl -sf http://localhost:3000/health || (echo "task-service FAIL" && exit 1)
             curl -sf http://localhost:3002/health || (echo "project-service FAIL" && exit 1)
             curl -sf http://localhost:3003/health || (echo "notification-service FAIL" && exit 1)
-            curl -sf http://localhost/              || (echo "frontend FAIL" && exit 1)
-            echo "All production healthchecks passed"
+            curl -sf http://localhost/             || (echo "frontend FAIL" && exit 1)
+            echo "All production healthchecks passed ✅"
 
       - name: Rollback on failure
         if: failure()
@@ -108,8 +106,8 @@ jobs:
           script: |
             cd /opt/app
             echo "Rolling back to previous images..."
-            docker compose --profile mysql down
-            docker compose --profile mysql up -d
+            docker compose -f docker-compose.production.yml down
+            docker compose -f docker-compose.production.yml up -d
             echo "Rollback complete"
 
       - name: Deployment summary

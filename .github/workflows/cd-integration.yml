@@ -41,20 +41,20 @@ jobs:
             mv docker-compose.integration.yml docker-compose.yml
 
             # Save current image digests for rollback
-            docker compose --profile mysql ps -q | xargs -r docker inspect --format='{{.Image}}' > /tmp/previous-images.txt || true
+            docker compose -f docker-compose.integration.yml ps -q | xargs -r docker inspect --format='{{.Image}}' > /tmp/previous-images.txt || true
 
             # Pull latest images from GHCR
             echo "Pulling latest images..."
-            docker compose --profile mysql pull
+            docker compose -f docker-compose.integration.yml pull
 
             # Start services
-            docker compose --profile mysql up -d
+            docker compose -f docker-compose.integration.yml up -d
 
             # Wait for services to be healthy
             echo "Waiting for services to be healthy..."
             RETRIES=30
             for i in $(seq 1 $RETRIES); do
-              HEALTHY=$(docker compose --profile mysql ps --format json | grep -c '"healthy"' || true)
+              HEALTHY=$(docker compose -f docker-compose.integration.yml ps --format json | grep -c '"healthy"' || true)
               echo "  healthy: $HEALTHY/4 (attempt $i/$RETRIES)"
               [ "$HEALTHY" -ge 4 ] && break
               if [ "$i" -eq "$RETRIES" ]; then
@@ -65,7 +65,7 @@ jobs:
             done
 
             echo "All services healthy"
-            docker compose --profile mysql ps
+            docker compose -f docker-compose.integration.yml ps
 
       - name: Post-deploy healthcheck
         uses: appleboy/ssh-action@v1
@@ -80,7 +80,7 @@ jobs:
             curl -sf http://localhost:3000/health || (echo "task-service FAIL" && exit 1)
             curl -sf http://localhost:3002/health || (echo "project-service FAIL" && exit 1)
             curl -sf http://localhost:3003/health || (echo "notification-service FAIL" && exit 1)
-            echo "All healthchecks passed"
+            echo "All healthchecks passed ✅"
 
       - name: Rollback on failure
         if: failure()
@@ -92,8 +92,8 @@ jobs:
           script: |
             cd /opt/app
             echo "Rolling back to previous images..."
-            docker compose --profile mysql down
-            docker compose --profile mysql up -d
+            docker compose -f docker-compose.integration.yml down
+            docker compose -f docker-compose.integration.yml up -d
             echo "Rollback complete"
 
       - name: Deployment summary
