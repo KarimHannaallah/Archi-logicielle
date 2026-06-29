@@ -11,5 +11,7 @@ COPY services/auth-service/src/ services/auth-service/src/
 COPY services/auth-service/migrations/ services/auth-service/migrations/
 COPY services/auth-service/tsconfig.json services/auth-service/
 WORKDIR /app/services/auth-service
+LABEL provides.api-version="v1" \
+      provides.service="auth-service"
 EXPOSE 3001
 CMD ["npx", "ts-node", "src/index.ts"]

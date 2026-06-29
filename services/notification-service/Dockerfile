@@ -8,5 +8,8 @@ COPY packages/shared-auth/src/ packages/shared-auth/src/
 COPY services/notification-service/src/ services/notification-service/src/
 COPY services/notification-service/tsconfig.json services/notification-service/
 WORKDIR /app/services/notification-service
+LABEL provides.api-version="v1" \
+      provides.service="notification-service" \
+      requires.auth-service=">=1.0.0"
 EXPOSE 3003
 CMD ["npx", "ts-node", "src/index.ts"]
