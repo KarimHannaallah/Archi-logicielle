@@ -1,0 +1,101 @@
+name: CD — Integration
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: cd-integration
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  REPO: ${{ github.repository }}
+
+jobs:
+  deploy-integration:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: integration
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Set lowercase repo
+        run: echo "REPO=$(echo ${{ env.REPO }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Deploy to integration VM
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.INTEGRATION_HOST }}
+          username: ${{ secrets.INTEGRATION_USER }}
+          key: ${{ secrets.INTEGRATION_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.INTEGRATION_APP_DIR || '/opt/app' }}
+
+            # Save current image digests for rollback
+            docker compose --profile mysql ps -q | xargs -r docker inspect --format='{{.Image}}' > /tmp/previous-images.txt || true
+
+            # Pull latest images
+            echo "Pulling latest images..."
+            docker compose --profile mysql pull 2>/dev/null || true
+
+            # Update code and rebuild
+            git pull origin main
+            docker compose --profile mysql up --build -d
+
+            # Wait for services to be healthy
+            echo "Waiting for services to be healthy..."
+            RETRIES=30
+            for i in $(seq 1 $RETRIES); do
+              HEALTHY=$(docker compose --profile mysql ps --format json | grep -c '"healthy"' || true)
+              echo "  healthy: $HEALTHY/4 (attempt $i/$RETRIES)"
+              [ "$HEALTHY" -ge 4 ] && break
+              if [ "$i" -eq "$RETRIES" ]; then
+                echo "ERROR: Services failed to become healthy"
+                exit 1
+              fi
+              sleep 10
+            done
+
+            echo "All services healthy"
+            docker compose --profile mysql ps
+
+      - name: Post-deploy healthcheck
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.INTEGRATION_HOST }}
+          username: ${{ secrets.INTEGRATION_USER }}
+          key: ${{ secrets.INTEGRATION_SSH_KEY }}
+          script: |
+            set -e
+            echo "Running healthchecks..."
+            curl -sf http://localhost:3001/health || (echo "auth-service FAIL" && exit 1)
+            curl -sf http://localhost:3000/health || (echo "task-service FAIL" && exit 1)
+            curl -sf http://localhost:3002/health || (echo "project-service FAIL" && exit 1)
+            curl -sf http://localhost:3003/health || (echo "notification-service FAIL" && exit 1)
+            echo "All healthchecks passed"
+
+      - name: Rollback on failure
+        if: failure()
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.INTEGRATION_HOST }}
+          username: ${{ secrets.INTEGRATION_USER }}
+          key: ${{ secrets.INTEGRATION_SSH_KEY }}
+          script: |
+            cd ${{ secrets.INTEGRATION_APP_DIR || '/opt/app' }}
+            echo "Rolling back..."
+            git checkout HEAD~1
+            docker compose --profile mysql up --build -d
+            echo "Rollback complete"
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "## CD Integration" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by CI run:** ${{ github.event.workflow_run.id }}" >> $GITHUB_STEP_SUMMARY
