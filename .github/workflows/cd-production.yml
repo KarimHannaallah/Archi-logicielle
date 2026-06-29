@@ -23,16 +23,6 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Deploying version: $VERSION"
 
-      - name: Copy compose file to VM
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VM_HOST_PROD }}
-          username: ${{ secrets.VM_USER_PROD }}
-          key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
-          source: "docker-compose.production.yml"
-          target: "/opt/app/"
-          overwrite: true
-
       - name: Deploy to production VM (sequential)
         uses: appleboy/ssh-action@v1
         with:
@@ -44,7 +34,13 @@ jobs:
           script: |
             set -e
             cd /opt/app
-            mv docker-compose.production.yml docker-compose.yml
+
+            # Télécharger le fichier compose depuis GitHub
+            curl -sf \
+              "https://raw.githubusercontent.com/KarimHannaallah/Archi-logicielle/main/docker-compose.production.yml" \
+              -o docker-compose.production.yml
+
+            echo "✅ docker-compose.production.yml téléchargé"
 
             # Save current images for rollback
             docker compose -f docker-compose.production.yml ps -q | xargs -r docker inspect --format='{{index .Config.Image}}' > /tmp/previous-images.txt 2>/dev/null || true
