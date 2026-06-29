@@ -249,20 +249,53 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
+
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
-      - name: Run tests with coverage
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*
+          merge-multiple: false
+        continue-on-error: true
+
+      - name: Move coverage to correct paths
         run: |
-          npm test -w services/task-service -- --coverage --coverageReporters=lcov || true
-          npm test -w services/project-service -- --coverage --coverageReporters=lcov || true
-          npm test -w services/auth-service -- --coverage --coverageReporters=lcov || true
-          npm test -w services/notification-service -- --coverage --coverageReporters=lcov || true
+          mkdir -p services/task-service/coverage
+          mkdir -p services/project-service/coverage
+          mkdir -p services/auth-service/coverage
+          mkdir -p services/notification-service/coverage
+          cp coverage-task-service/lcov.info services/task-service/coverage/ 2>/dev/null || true
+          cp coverage-project-service/lcov.info services/project-service/coverage/ 2>/dev/null || true
+          cp coverage-auth-service/lcov.info services/auth-service/coverage/ 2>/dev/null || true
+          cp coverage-notification-service/lcov.info services/notification-service/coverage/ 2>/dev/null || true
+        continue-on-error: true
+
+      - name: Run tests if no coverage artifacts
+        run: |
+          npm ci
+          MISSING=false
+          [ ! -f services/task-service/coverage/lcov.info ] && MISSING=true
+          [ ! -f services/project-service/coverage/lcov.info ] && MISSING=true
+          [ ! -f services/auth-service/coverage/lcov.info ] && MISSING=true
+          [ ! -f services/notification-service/coverage/lcov.info ] && MISSING=true
+
+          if [ "$MISSING" = "true" ]; then
+            echo "Some coverage files missing — running tests..."
+            npm test -w services/task-service -- --coverage --coverageReporters=lcov || true
+            npm test -w services/project-service -- --coverage --coverageReporters=lcov || true
+            npm test -w services/auth-service -- --coverage --coverageReporters=lcov || true
+            npm test -w services/notification-service -- --coverage --coverageReporters=lcov || true
+          else
+            echo "All coverage artifacts found — skipping test run ✅"
+          fi
         env:
           USE_INMEMORY: "true"
           JWT_SECRET: "change-me-in-production"
+
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@aa494459d7c39c106cc77b166de8b4250a32bb97
         env:

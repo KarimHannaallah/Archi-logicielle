@@ -19,16 +19,6 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
-      - name: Copy compose file to VM
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VM_HOST_INT }}
-          username: ${{ secrets.VM_USER_INT }}
-          key: ${{ secrets.SSH_PRIVATE_KEY_INT }}
-          source: "docker-compose.integration.yml"
-          target: "/opt/app/"
-          overwrite: true
-
       - name: Deploy to integration VM
         uses: appleboy/ssh-action@v1
         with:
@@ -38,7 +28,13 @@ jobs:
           script: |
             set -e
             cd /opt/app
-            mv docker-compose.integration.yml docker-compose.yml
+
+            # Télécharger le fichier compose depuis GitHub
+            curl -sf \
+              "https://raw.githubusercontent.com/KarimHannaallah/Archi-logicielle/main/docker-compose.integration.yml" \
+              -o docker-compose.integration.yml
+
+            echo "✅ docker-compose.integration.yml téléchargé"
 
             # Save current image digests for rollback
             docker compose -f docker-compose.integration.yml ps -q | xargs -r docker inspect --format='{{.Image}}' > /tmp/previous-images.txt || true
