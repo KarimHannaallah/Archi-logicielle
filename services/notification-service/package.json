@@ -1,6 +1,6 @@
 {
   "name": "notification-service",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "src/index.ts",
   "license": "MIT",
   "engines": {
@@ -18,10 +18,20 @@
       "^.+\\.ts$": "ts-jest",
       "^.+\\.js$": "babel-jest"
     },
-    "moduleFileExtensions": ["ts", "js", "json"],
+    "moduleFileExtensions": [
+      "ts",
+      "js",
+      "json"
+    ],
     "reporters": [
       "default",
-      ["jest-junit", { "outputDirectory": "test-results", "outputName": "junit.xml" }]
+      [
+        "jest-junit",
+        {
+          "outputDirectory": "test-results",
+          "outputName": "junit.xml"
+        }
+      ]
     ]
   },
   "dependencies": {
