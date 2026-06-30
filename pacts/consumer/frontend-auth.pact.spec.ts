@@ -1,5 +1,5 @@
 import path from 'path';
-import { PactV2, Matchers } from '@pact-foundation/pact';
+import { Pact, Matchers } from '@pact-foundation/pact';
 
 const { like, term } = Matchers;
 
@@ -8,7 +8,7 @@ const uuidLike = () => term({
     matcher: '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
 });
 
-const provider = new PactV2({
+const provider = new Pact({
     consumer: 'frontend',
     provider: 'auth-service',
     dir: path.resolve(__dirname, '..'),
