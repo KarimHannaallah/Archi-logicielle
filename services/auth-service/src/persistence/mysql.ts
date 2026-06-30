@@ -71,14 +71,14 @@ export function createMysqlUserRepository(): UserRepository & { init(): Promise<
         async create(user: User): Promise<void> {
             return new Promise((acc, rej) => {
                 pool.query(
-                    'INSERT INTO users (id, email, name, password_hash, created_at, consent_given) VALUES (?, ?, ?, ?, ?, ?)',
-                    [user.id, user.email, user.name, user.passwordHash, user.createdAt, user.consentGiven ? 1 : 0],
+                    'INSERT INTO users (id, email, name, password_hash, created_at, consent_given, birth_date) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    [user.id, user.email, user.name, user.passwordHash, user.createdAt, user.consentGiven ? 1 : 0, user.birthDate ?? null],
                     (err: Error | null) => (err ? rej(err) : acc()),
                 );
             });
         },
 
-        async update(id: string, data: { name: string; email: string }): Promise<void> {
+        async update(id: string, data: { name: string; email: string; birthDate?: string }): Promise<void> {
             return new Promise((acc, rej) => {
                 pool.query(
                     'UPDATE users SET name = ?, email = ? WHERE id = ?',
@@ -104,5 +104,6 @@ function mapRow(row: any): User {
         passwordHash: row.password_hash,
         createdAt: row.created_at,
         consentGiven: row.consent_given === 1,
+        birthDate: row.birth_date ?? undefined,
     };
 }
