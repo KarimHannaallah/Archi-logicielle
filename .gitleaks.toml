@@ -7,5 +7,6 @@ paths = [
     ".env.example",
     "services/task-service/.env.example",
     "services/project-service/.env.example",
-    "services/notification-service/.env.example"
+    "services/notification-service/.env.example",
+    "pacts/frontend-auth-service.json"
 ]
