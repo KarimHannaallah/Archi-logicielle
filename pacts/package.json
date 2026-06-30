@@ -1,0 +1,26 @@
+{
+  "name": "@archi/pacts",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test:consumer": "jest consumer/",
+    "test:provider": "cross-env JWT_SECRET=test-secret jest provider/ --passWithNoTests",
+    "test": "npm run test:consumer && npm run test:provider"
+  },
+  "devDependencies": {
+    "@pact-foundation/pact": "^12.5.0",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^25.0.0",
+    "cross-env": "^7.0.3",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.6",
+    "typescript": "^5.9.3"
+  },
+  "jest": {
+    "rootDir": ".",
+    "transform": {
+      "^.+\\.ts$": "ts-jest"
+    },
+    "testTimeout": 30000
+  }
+}

@@ -8,7 +8,8 @@
     "services/auth-service",
     "services/task-service",
     "services/project-service",
-    "services/notification-service"
+    "services/notification-service",
+    "pacts"
   ],
   "overrides": {
     "ansi-regex": "5.0.1"
