@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import type { AuthService } from './domain/AuthService';
 import { makeAuthRouter } from './routes/auth';
+import { makeAuthV2Router } from './routes/auth.v2';
 const { version } = require('../package.json');
 
 export function createApp(authService: AuthService) {
@@ -17,5 +18,7 @@ export function createApp(authService: AuthService) {
     app.use('/auth', makeAuthRouter(authService));
     // v1 explicit
     app.use('/v1/auth', makeAuthRouter(authService));
+    // v2 — /register requires birthDate
+    app.use('/v2/auth', makeAuthV2Router(authService));
     return app;
 }
