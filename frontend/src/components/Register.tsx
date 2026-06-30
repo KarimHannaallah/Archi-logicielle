@@ -7,6 +7,7 @@ export default function Register() {
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
     const [consent, setConsent] = useState(false);
+    const [birthDate, setBirthDate] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const { register } = useAuth();
@@ -21,7 +22,7 @@ export default function Register() {
         }
         setLoading(true);
         try {
-            await register(email, name, password, consent);
+            await register(email, name, password, consent, birthDate);
             navigate('/');
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Registration failed');
@@ -68,6 +69,17 @@ export default function Register() {
                             onChange={e => setPassword(e.target.value)}
                             required
                             minLength={6}
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label htmlFor="birthDate" className="form-label fw-medium">Date de naissance</label>
+                        <input
+                            type="date"
+                            className="form-control"
+                            id="birthDate"
+                            value={birthDate}
+                            onChange={e => setBirthDate(e.target.value)}
+                            required
                         />
                     </div>
                     <div className="mb-3 form-check">
