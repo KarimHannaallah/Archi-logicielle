@@ -13,10 +13,9 @@ export function createApp(authService: AuthService) {
     app.use(express.json());
     app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'auth-service', version }));
     app.get('/version', (_req, res) => res.json({ service: 'auth-service', version }));
-
-    // v1 routes
-    app.use('/v1/auth', makeAuthRouter(authService));
     // legacy (unversioned) — backward compatibility
     app.use('/auth', makeAuthRouter(authService));
+    // v1 explicit
+    app.use('/v1/auth', makeAuthRouter(authService));
     return app;
 }

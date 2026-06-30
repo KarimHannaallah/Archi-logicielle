@@ -23,10 +23,10 @@ export function createInMemoryUserRepository(): UserRepository & { init(): Promi
         async create(user: User): Promise<void> {
             store.set(user.id, { ...user });
         },
-        async update(id: string, data: { name: string; email: string }): Promise<void> {
+        async update(id: string, data: { name: string; email: string; birthDate?: string }): Promise<void> {
             const existing = store.get(id);
             if (existing) {
-                store.set(id, { ...existing, name: data.name, email: data.email });
+                store.set(id, { ...existing, name: data.name, email: data.email, birthDate: data.birthDate ?? existing.birthDate });
             }
         },
         async remove(id: string): Promise<void> {

@@ -5,4 +5,5 @@ export interface User {
     passwordHash: string;
     createdAt: string;
     consentGiven: boolean;
+    birthDate?: string;
 }
