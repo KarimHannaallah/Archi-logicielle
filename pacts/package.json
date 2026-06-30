@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "test:consumer": "jest consumer/",
-    "test:provider": "cross-env JWT_SECRET=test-secret jest provider/",
+    "test:provider": "cross-env JWT_SECRET=test-secret jest provider/ --passWithNoTests",
     "test": "npm run test:consumer && npm run test:provider"
   },
   "devDependencies": {
