@@ -1,0 +1,146 @@
+{
+  "consumer": {
+    "name": "frontend"
+  },
+  "provider": {
+    "name": "auth-service"
+  },
+  "interactions": [
+    {
+      "description": "register a new user",
+      "providerState": "email alice@example.com is not taken",
+      "request": {
+        "method": "POST",
+        "path": "/auth/register",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "email": "alice@example.com",
+          "name": "Alice",
+          "password": "secret123",
+          "consent": true
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test",
+          "user": {
+            "id": "00000000-0000-0000-0000-000000000001",
+            "email": "alice@example.com",
+            "name": "Alice"
+          }
+        },
+        "matchingRules": {
+          "body": {
+            "$.token": { "match": "type" },
+            "$.user.id": { "match": "uuid" },
+            "$.user.email": { "match": "type" },
+            "$.user.name": { "match": "type" }
+          }
+        }
+      }
+    },
+    {
+      "description": "login with valid credentials",
+      "providerState": "user alice@example.com exists with password secret123",
+      "request": {
+        "method": "POST",
+        "path": "/auth/login",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "email": "alice@example.com",
+          "password": "secret123"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test",
+          "user": {
+            "id": "00000000-0000-0000-0000-000000000001",
+            "email": "alice@example.com",
+            "name": "Alice"
+          }
+        },
+        "matchingRules": {
+          "body": {
+            "$.token": { "match": "type" },
+            "$.user.id": { "match": "uuid" },
+            "$.user.email": { "match": "type" },
+            "$.user.name": { "match": "type" }
+          }
+        }
+      }
+    },
+    {
+      "description": "verify a valid token",
+      "providerState": "user alice@example.com exists with a valid token",
+      "request": {
+        "method": "GET",
+        "path": "/auth/verify",
+        "headers": {
+          "Authorization": "Bearer valid-token"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "valid": true,
+          "userId": "00000000-0000-0000-0000-000000000001"
+        },
+        "matchingRules": {
+          "body": {
+            "$.userId": { "match": "uuid" }
+          }
+        }
+      }
+    },
+    {
+      "description": "login with wrong password",
+      "providerState": "user alice@example.com exists with password secret123",
+      "request": {
+        "method": "POST",
+        "path": "/auth/login",
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "email": "alice@example.com",
+          "password": "wrong"
+        }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "error": "Invalid credentials"
+        },
+        "matchingRules": {
+          "body": {
+            "$.error": { "match": "type" }
+          }
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "pactSpecification": {
+      "version": "2.0.0"
+    }
+  }
+}
