@@ -6,3 +6,15 @@ releases:
       project-service: v1.0.0
       notification-service: v1.0.0
     api-gateway-version: v1
+
+  - version: "2026-06-30"
+    services:
+      auth-service: v2.0.0
+      task-service: v1.0.0
+      project-service: v1.0.0
+      notification-service: v1.0.0
+    api-gateway-version: v1
+    notes: >
+      auth-service v2 adds /v2/auth/register requiring birthDate.
+      /v1/auth/register and /auth/register remain unchanged — non-breaking.
+      task-service, project-service, notification-service unaffected (only consume JWT/userId).

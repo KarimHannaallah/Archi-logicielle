@@ -42,14 +42,7 @@ export function createSqliteUserRepository(dbLocation?: string): UserRepository 
                 db.get('SELECT * FROM users WHERE id = ?', [id], (err: Error | null, row: any) => {
                     if (err) return rej(err);
                     if (!row) return acc(undefined);
-                    acc({
-                        id: row.id,
-                        email: row.email,
-                        name: row.name,
-                        passwordHash: row.password_hash,
-                        createdAt: row.created_at,
-                        consentGiven: row.consent_given === 1,
-                    });
+                    acc(mapRow(row));
                 });
             });
         },
@@ -59,14 +52,7 @@ export function createSqliteUserRepository(dbLocation?: string): UserRepository 
                 db.get('SELECT * FROM users WHERE email = ?', [email], (err: Error | null, row: any) => {
                     if (err) return rej(err);
                     if (!row) return acc(undefined);
-                    acc({
-                        id: row.id,
-                        email: row.email,
-                        name: row.name,
-                        passwordHash: row.password_hash,
-                        createdAt: row.created_at,
-                        consentGiven: row.consent_given === 1,
-                    });
+                    acc(mapRow(row));
                 });
             });
         },
@@ -74,8 +60,8 @@ export function createSqliteUserRepository(dbLocation?: string): UserRepository 
         async create(user: User): Promise<void> {
             return new Promise((acc, rej) => {
                 db.run(
-                    'INSERT INTO users (id, email, name, password_hash, created_at, consent_given) VALUES (?, ?, ?, ?, ?, ?)',
-                    [user.id, user.email, user.name, user.passwordHash, user.createdAt, user.consentGiven ? 1 : 0],
+                    'INSERT INTO users (id, email, name, password_hash, created_at, consent_given, birth_date) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    [user.id, user.email, user.name, user.passwordHash, user.createdAt, user.consentGiven ? 1 : 0, user.birthDate ?? null],
                     (err: Error | null) => {
                         if (err) return rej(err);
                         acc();
@@ -84,7 +70,7 @@ export function createSqliteUserRepository(dbLocation?: string): UserRepository 
             });
         },
 
-        async update(id: string, data: { name: string; email: string }): Promise<void> {
+        async update(id: string, data: { name: string; email: string; birthDate?: string }): Promise<void> {
             return new Promise((acc, rej) => {
                 db.run(
                     'UPDATE users SET name = ?, email = ? WHERE id = ?',
@@ -105,5 +91,17 @@ export function createSqliteUserRepository(dbLocation?: string): UserRepository 
                 });
             });
         },
+    };
+}
+
+function mapRow(row: any): User {
+    return {
+        id: row.id,
+        email: row.email,
+        name: row.name,
+        passwordHash: row.password_hash,
+        createdAt: row.created_at,
+        consentGiven: row.consent_given === 1,
+        birthDate: row.birth_date ?? undefined,
     };
 }

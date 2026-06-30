@@ -1,10 +1,10 @@
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 import { v4 as uuid } from 'uuid';
 import type { User } from './User';
 import type { UserRepository } from './UserRepository';
 
 export interface AuthService {
-    register(email: string, name: string, password: string, consent: boolean): Promise<User>;
+    register(email: string, name: string, password: string, consent: boolean, birthDate?: string): Promise<User>;
     login(email: string, password: string): Promise<User>;
     getProfile(userId: string): Promise<User | undefined>;
     updateProfile(userId: string, data: { name: string; email: string }): Promise<User | undefined>;
@@ -25,7 +25,7 @@ function verifyPassword(password: string, stored: string): boolean {
 
 export function createAuthService(userRepository: UserRepository): AuthService {
     return {
-        async register(email: string, name: string, password: string, consent: boolean): Promise<User> {
+        async register(email: string, name: string, password: string, consent: boolean, birthDate?: string): Promise<User> {
             const existing = await userRepository.findByEmail(email);
             if (existing) {
                 throw new Error('Email already in use');
@@ -40,6 +40,7 @@ export function createAuthService(userRepository: UserRepository): AuthService {
                 passwordHash: hashPassword(password),
                 createdAt: new Date().toISOString(),
                 consentGiven: consent,
+                birthDate,
             };
             await userRepository.create(user);
             return user;
