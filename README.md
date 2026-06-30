@@ -6,6 +6,8 @@
 [![CodeQL](https://github.com/KarimHannaallah/Archi-logicielle/actions/workflows/codeql.yml/badge.svg)](https://github.com/KarimHannaallah/Archi-logicielle/actions/workflows/codeql.yml)
 [![CodeQL](https://github.com/KarimHannaallah/Archi-logicielle/actions/workflows/codeql.yml/badge.svg)](https://github.com/KarimHannaallah/Archi-logicielle/actions/workflows/codeql.yml)
 [![Node](https://img.shields.io/badge/node-%3E%3D24-brightgreen)](https://nodejs.org)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=KarimHannaallah_Archi-logicielle&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=KarimHannaallah_Archi-logicielle)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=KarimHannaallah_Archi-logicielle&metric=coverage)](https://sonarcloud.io/summary/new_code?id=KarimHannaallah_Archi-logicielle)
 
 Application Todo fullstack avec authentification, gestion de projets et notifications
 en temps quasi-réel via Redis Pub/Sub.
