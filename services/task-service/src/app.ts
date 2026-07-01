@@ -7,6 +7,7 @@ import { makeAddItem } from './routes/addItem';
 import { makeUpdateItem } from './routes/updateItem';
 import { makeDeleteItem } from './routes/deleteItem';
 import { authMiddleware } from '@archi/shared-auth';
+import { version } from '../package.json';
 
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -29,7 +30,9 @@ export function createApp(todoService: TodoService, options?: AppOptions) {
     }));
     app.use(express.json());
 
-    app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+    app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'task-service', version }));
+
+
 
     if (options?.enableAuth === false) {
         app.get('/items', makeGetItems(todoService));
