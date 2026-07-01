@@ -1,4 +1,4 @@
-import path from 'path';
+import path from 'node:path';
 import { Pact, Matchers } from '@pact-foundation/pact';
 
 const { like, term } = Matchers;
@@ -14,6 +14,7 @@ const provider = new Pact({
     dir: path.resolve(__dirname, '..'),
     logLevel: 'warn',
     port: 1234,
+    spec: 2,
 });
 
 const BASE = 'http://localhost:1234';
