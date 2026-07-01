@@ -11,7 +11,7 @@ const uuidLike = () => term({
 const provider = new Pact({
     consumer: 'frontend',
     provider: 'auth-service',
-    dir: path.resolve(__dirname, '..'),
+    dir: path.resolve(__dirname, '../generated'),
     logLevel: 'warn',
     port: 1234,
     spec: 2,
