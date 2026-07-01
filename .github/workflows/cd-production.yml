@@ -27,7 +27,6 @@ jobs:
           # Toujours utiliser le dernier entry — indépendant du tag de release
           release = manifest["releases"][-1]
 
-          print(f"Using manifest entry: {release['version']}")
           s = release["services"]
           out = os.environ["GITHUB_OUTPUT"]
           with open(out, "a") as f:
