@@ -344,111 +344,14 @@ jobs:
       always() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    strategy:
-      matrix:
-        include:
-          - service: auth-service
-            changed: ${{ needs.detect-changes.outputs.auth-service }}
-            file: services/auth-service/Dockerfile
-            pkg: services/auth-service/package.json
-          - service: task-service
-            changed: ${{ needs.detect-changes.outputs.task-service }}
-            file: services/task-service/Dockerfile
-            pkg: services/task-service/package.json
-          - service: project-service
-            changed: ${{ needs.detect-changes.outputs.project-service }}
-            file: services/project-service/Dockerfile
-            pkg: services/project-service/package.json
-          - service: notification-service
-            changed: ${{ needs.detect-changes.outputs.notification-service }}
-            file: services/notification-service/Dockerfile
-            pkg: services/notification-service/package.json
-          - service: frontend
-            changed: ${{ needs.detect-changes.outputs.frontend }}
-            file: frontend/Dockerfile
-            pkg: frontend/package.json
-    steps:
-      - name: Skip if unchanged
-        if: matrix.changed != 'true'
-        run: echo "⏭️ ${{ matrix.service }} image non modifiée — skippée"
-
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        if: matrix.changed == 'true'
-        with:
-          fetch-depth: 2
-
-      - name: Set lowercase repo
-        if: matrix.changed == 'true'
-        run: echo "REPO=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-
-      - name: Read version from package.json
-        if: matrix.changed == 'true'
-        id: pkg
-        run: |
-          VERSION=$(node -p "require('./${{ matrix.pkg }}').version")
-          MAJOR=$(echo "$VERSION" | cut -d. -f1)
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
-
-      - name: Detect version change
-        if: matrix.changed == 'true'
-        id: version-changed
-        run: |
-          OLD_VERSION=$(git show HEAD~1:${{ matrix.pkg }} 2>/dev/null | node -p "JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')).version" 2>/dev/null || echo "")
-          if [ "$OLD_VERSION" != "${{ steps.pkg.outputs.version }}" ]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Set up Docker Buildx
-        if: matrix.changed == 'true'
-        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2
-
-      - name: Login to GHCR
-        if: matrix.changed == 'true' && github.ref == 'refs/heads/main'
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Docker metadata
-        if: matrix.changed == 'true'
-        id: meta
-        uses: docker/metadata-action@902fa8ec7d6ecbf8d84d538b9b233a880e428804
-        with:
-          images: ghcr.io/${{ env.REPO }}/${{ matrix.service }}
-          tags: |
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=sha,prefix=sha-,enable=true
-            type=raw,value=${{ steps.pkg.outputs.major }},enable=${{ github.ref == 'refs/heads/main' && steps.version-changed.outputs.changed == 'true' }}
-            type=raw,value=${{ steps.pkg.outputs.version }},enable=${{ github.ref == 'refs/heads/main' && steps.version-changed.outputs.changed == 'true' }}
-
-      - name: Build and push ${{ matrix.service }}
-        if: matrix.changed == 'true'
-        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83
-        with:
-          context: .
-          file: ${{ matrix.file }}
-          platforms: ${{ github.ref == 'refs/heads/main' && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
-          push: ${{ github.ref == 'refs/heads/main' }}
-          cache-from: type=gha,scope=${{ matrix.service }}
-          cache-to: type=gha,scope=${{ matrix.service }},mode=max
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
-      - name: Image summary
-        if: matrix.changed == 'true' && github.ref == 'refs/heads/main'
-        run: |
-          echo "### ${{ matrix.service }}" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+    uses: ./.github/workflows/docker-build.yml
+    with:
+      auth-service: ${{ needs.detect-changes.outputs.auth-service }}
+      task-service: ${{ needs.detect-changes.outputs.task-service }}
+      project-service: ${{ needs.detect-changes.outputs.project-service }}
+      notification-service: ${{ needs.detect-changes.outputs.notification-service }}
+      frontend: ${{ needs.detect-changes.outputs.frontend }}
+    secrets: inherit
 
   # ── Étape 5 — Scan de sécurité ───────────────────────────────────────────────
 
