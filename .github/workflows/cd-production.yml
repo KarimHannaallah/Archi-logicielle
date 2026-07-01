@@ -15,13 +15,42 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
-      - name: Extract version from release tag
-        id: version
+      - name: Extract versions from compatibility-manifest
+        id: versions
         run: |
           TAG="${{ github.event.release.tag_name }}"
-          VERSION="${TAG#v}"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Deploying version: $VERSION"
+          RELEASE="${TAG#v}"
+          echo "release=$RELEASE" >> "$GITHUB_OUTPUT"
+
+          python3 << EOF
+          import yaml, os, sys
+
+          release_key = "$RELEASE"
+          with open("compatibility-manifest.yml") as f:
+              manifest = yaml.safe_load(f)
+
+          release = next((r for r in manifest["releases"] if str(r["version"]) == release_key), None)
+          if not release:
+              print(f"ERROR: No entry found in compatibility-manifest.yml for version '{release_key}'", file=sys.stderr)
+              sys.exit(1)
+
+          s = release["services"]
+          out = os.environ["GITHUB_OUTPUT"]
+          with open(out, "a") as f:
+              f.write(f"auth_version={s['auth-service'].lstrip('v')}\n")
+              f.write(f"task_version={s['task-service'].lstrip('v')}\n")
+              f.write(f"project_version={s['project-service'].lstrip('v')}\n")
+              f.write(f"notif_version={s['notification-service'].lstrip('v')}\n")
+              f.write(f"frontend_version={s['frontend'].lstrip('v')}\n")
+          EOF
+
+      - name: Show resolved versions
+        run: |
+          echo "auth-service    : ${{ steps.versions.outputs.auth_version }}"
+          echo "task-service    : ${{ steps.versions.outputs.task_version }}"
+          echo "project-service : ${{ steps.versions.outputs.project_version }}"
+          echo "notification    : ${{ steps.versions.outputs.notif_version }}"
+          echo "frontend        : ${{ steps.versions.outputs.frontend_version }}"
 
       - name: Deploy to production VM (sequential)
         uses: appleboy/ssh-action@v1
@@ -30,7 +59,7 @@ jobs:
           username: ${{ secrets.VM_USER_PROD }}
           key: ${{ secrets.SSH_PRIVATE_KEY_PROD }}
           command_timeout: 10m
-          envs: VERSION
+          envs: AUTH_VERSION,TASK_VERSION,PROJECT_VERSION,NOTIF_VERSION,FRONTEND_VERSION
           script: |
             set -e
             cd /opt/app
@@ -46,14 +75,24 @@ jobs:
             echo "Previous images saved:"
             cat /tmp/previous-images.txt || true
 
-            echo "Pulling images with tag: $VERSION"
-            VERSION=$VERSION docker compose -f docker-compose.production.yml pull
+            echo "Pulling images..."
+            AUTH_VERSION=$AUTH_VERSION \
+            TASK_VERSION=$TASK_VERSION \
+            PROJECT_VERSION=$PROJECT_VERSION \
+            NOTIF_VERSION=$NOTIF_VERSION \
+            FRONTEND_VERSION=$FRONTEND_VERSION \
+            docker compose -f docker-compose.production.yml pull
 
             SERVICES="auth-service task-service project-service notification-service frontend"
 
             for SVC in $SERVICES; do
               echo "=== Deploying $SVC ==="
-              VERSION=$VERSION docker compose -f docker-compose.production.yml up -d --no-deps "$SVC"
+              AUTH_VERSION=$AUTH_VERSION \
+              TASK_VERSION=$TASK_VERSION \
+              PROJECT_VERSION=$PROJECT_VERSION \
+              NOTIF_VERSION=$NOTIF_VERSION \
+              FRONTEND_VERSION=$FRONTEND_VERSION \
+              docker compose -f docker-compose.production.yml up -d --no-deps "$SVC"
 
               RETRIES=20
               for i in $(seq 1 $RETRIES); do
@@ -72,7 +111,11 @@ jobs:
             echo "All services deployed ✅"
             docker compose -f docker-compose.production.yml ps
         env:
-          VERSION: ${{ steps.version.outputs.version }}
+          AUTH_VERSION: ${{ steps.versions.outputs.auth_version }}
+          TASK_VERSION: ${{ steps.versions.outputs.task_version }}
+          PROJECT_VERSION: ${{ steps.versions.outputs.project_version }}
+          NOTIF_VERSION: ${{ steps.versions.outputs.notif_version }}
+          FRONTEND_VERSION: ${{ steps.versions.outputs.frontend_version }}
 
       - name: Post-deploy healthcheck
         uses: appleboy/ssh-action@v1
@@ -133,20 +176,10 @@ jobs:
 
             if [ -f /tmp/previous-images.txt ] && [ -s /tmp/previous-images.txt ]; then
               docker compose -f docker-compose.production.yml down
-
-              while IFS=' ' read -r image name; do
-                SERVICE=$(echo "$name" | sed 's|.*-\([^-]*\)-1$|\1|' | tr -d '/')
-                if docker image inspect "$image" > /dev/null 2>&1; then
-                  echo "Retagging $image for $SERVICE"
-                  VERSION_OLD=$(echo "$image" | grep -o '[^:]*$')
-                  docker tag "$image" "ghcr.io/karimhannaallah/archi-logicielle/$SERVICE:$VERSION_OLD" || true
-                fi
-              done < /tmp/previous-images.txt
-
-              PREV_VERSION=$(grep 'archi-logicielle' /tmp/previous-images.txt | head -1 | grep -o '[^:]*$' || echo "latest")
-              echo "Rolling back to version: $PREV_VERSION"
-              VERSION=$PREV_VERSION docker compose -f docker-compose.production.yml up -d
-              echo "Rollback complete ✅"
+              AUTH_VERSION=latest TASK_VERSION=latest PROJECT_VERSION=latest \
+              NOTIF_VERSION=latest FRONTEND_VERSION=latest \
+              docker compose -f docker-compose.production.yml up -d
+              echo "Rollback to latest complete ✅"
             else
               echo "No previous images found — stopping services"
               docker compose -f docker-compose.production.yml down
@@ -157,7 +190,14 @@ jobs:
         run: |
           echo "## CD Production" >> $GITHUB_STEP_SUMMARY
           echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Release:** ${{ github.event.release.tag_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Service | Version |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|---------|" >> $GITHUB_STEP_SUMMARY
+          echo "| auth-service | ${{ steps.versions.outputs.auth_version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| task-service | ${{ steps.versions.outputs.task_version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| project-service | ${{ steps.versions.outputs.project_version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| notification-service | ${{ steps.versions.outputs.notif_version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| frontend | ${{ steps.versions.outputs.frontend_version }} |" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
           echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
