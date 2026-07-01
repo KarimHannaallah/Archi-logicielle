@@ -187,6 +187,20 @@ Documentation complète : [docs/CI.md](docs/CI.md)
 | `ci.yml` | push / PR | Build · tests · lint · sécurité · Docker push |
 | `nightly.yml` | 02:00 UTC | Intégration · E2E · dependency review |
 | `codeql.yml` | push main / PR / hebdo | Analyse statique de sécurité |
+| `cd-integration.yml` | CI success sur main | Deploy automatique → VM intégration |
+| `cd-production.yml` | Release GitHub publiée | Deploy manuel → VM production |
+
+### Documentation CD
+
+| Doc | Sujet |
+|-----|-------|
+| [docs/CD-PIPELINE.md](docs/CD-PIPELINE.md) | Pipeline complet (F) |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Déploiement SSH sur VMs (H) |
+| [docs/API_VERSIONING.md](docs/API_VERSIONING.md) | Versionning REST auth-service (B) |
+| [docs/DATABASE-MIGRATIONS.md](docs/DATABASE-MIGRATIONS.md) | Migrations SQLite/MySQL (C) |
+| [docs/DOCKER_VERSIONING.md](docs/DOCKER_VERSIONING.md) | Tags Docker GHCR (D) |
+| [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) | Manifeste de compatibilité (E) |
+| [docs/CONTRACT-TESTING.md](docs/CONTRACT-TESTING.md) | Pact contract testing (G) |
 
 ### Lancer les checks en local
 
