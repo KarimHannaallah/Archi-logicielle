@@ -509,16 +509,19 @@ jobs:
           PROJ_V=$(node -p "require('./services/project-service/package.json').version")
           NOTIF_V=$(node -p "require('./services/notification-service/package.json').version")
           FRONTEND_V=$(node -p "require('./frontend/package.json').version")
-          cat > compatibility-manifest.yml <<EOF
-          releases:
-            - services:
-                auth-service: v${AUTH_V}
-                task-service: v${TASK_V}
-                project-service: v${PROJ_V}
-                notification-service: v${NOTIF_V}
-                frontend: v${FRONTEND_V}
-          EOF
-          sed -i 's/^    //' compatibility-manifest.yml
+
+          python3 -c "
+          import yaml
+          data = {'releases': [{'services': {
+              'auth-service': 'v$AUTH_V',
+              'task-service': 'v$TASK_V',
+              'project-service': 'v$PROJ_V',
+              'notification-service': 'v$NOTIF_V',
+              'frontend': 'v$FRONTEND_V',
+          }}]}
+          with open('compatibility-manifest.yml', 'w') as f:
+              yaml.dump(data, f, default_flow_style=False, allow_unicode=True)
+          "
 
       - name: Commit if changed
         run: |
