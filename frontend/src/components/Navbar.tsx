@@ -14,7 +14,7 @@ export default function Navbar() {
     return (
         <nav className="navbar navbar-expand navbar-custom mb-4">
             <div className="container">
-                <Link className="navbar-brand" to="/">📋 Kanban App</Link>
+                <Link className="navbar-brand" to="/">⚡ TaskFlow</Link>
                 <span className="badge bg-secondary me-3" style={{ fontSize: '0.7rem', opacity: 0.7 }}>
                     v{__APP_VERSION__}
                 </span>
