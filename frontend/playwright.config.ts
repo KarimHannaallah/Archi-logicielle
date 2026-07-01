@@ -13,7 +13,7 @@ export default defineConfig({
     timeout: 30_000,
     retries: 0,
     use: {
-        baseURL: useDocker ? 'http://localhost' : 'http://localhost:5173',
+        baseURL: useDocker ? 'http://127.0.0.1' : 'http://localhost:5173',
         headless: true,
     },
     webServer: useDocker ? [] : [

@@ -1,4 +1,4 @@
-import path from 'path';
+import path from 'node:path';
 import { Pact, Matchers } from '@pact-foundation/pact';
 
 const { like, term } = Matchers;
@@ -11,9 +11,10 @@ const uuidLike = () => term({
 const provider = new Pact({
     consumer: 'frontend',
     provider: 'auth-service',
-    dir: path.resolve(__dirname, '..'),
+    dir: path.resolve(__dirname, '../generated'),
     logLevel: 'warn',
     port: 1234,
+    spec: 2,
 });
 
 const BASE = 'http://localhost:1234';
@@ -141,6 +142,35 @@ describe('frontend → auth-service contract', () => {
             const data = await res.json();
             expect(data.valid).toBe(true);
             expect(data.userId).toBeDefined();
+        });
+    });
+
+    describe('POST /auth/login wrong password', () => {
+        beforeEach(() =>
+            provider.addInteraction({
+                state: 'user alice@example.com exists with password secret123',
+                uponReceiving: 'login with wrong password',
+                withRequest: {
+                    method: 'POST',
+                    path: '/auth/login',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: { email: 'alice@example.com', password: 'wrong' },
+                },
+                willRespondWith: {
+                    status: 401,
+                    headers: { 'Content-Type': like('application/json') },
+                    body: { error: like('Invalid credentials') },
+                },
+            })
+        );
+
+        it('returns 401 on wrong password', async () => {
+            const res = await fetch(`${BASE}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: 'alice@example.com', password: 'wrong' }),
+            });
+            expect(res.status).toBe(401);
         });
     });
 });
