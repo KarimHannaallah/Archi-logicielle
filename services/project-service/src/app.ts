@@ -7,6 +7,7 @@ import { makeUpdateProject } from './routes/updateProject';
 import { makeDeleteProject } from './routes/deleteProject';
 import { makeGetProject } from './routes/getProject';
 import { authMiddleware } from '@archi/shared-auth';
+import { version } from '../package.json';
 
 const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -24,8 +25,8 @@ export function createApp(projectService: ProjectService, options?: AppOptions) 
     const app = express();
     app.use(express.json());
 
-    app.get('/health', (_req, res) => res.json({ status: 'ok' }));
-    
+    app.get('/health', (_req, res) => res.json({ status: 'ok', service: 'project-service', version }));
+
     if (options?.enableAuth === false) {
         app.get('/projects', makeGetProjects(projectService));
         app.get('/projects/:id', makeGetProject(projectService));
