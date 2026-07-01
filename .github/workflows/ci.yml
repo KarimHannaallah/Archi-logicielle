@@ -188,7 +188,7 @@ jobs:
         run: npm run lint --if-present -w frontend
         continue-on-error: true
       - run: npm run build -w frontend
-
+      
   # ── Étape 2b — Tests d'intégration (docker compose) ───────────────────────
 
   integration-tests:
@@ -496,7 +496,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           ref: main
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Update compatibility manifest
         run: |
@@ -505,6 +505,7 @@ jobs:
           TASK_V=$(node -p "require('./services/task-service/package.json').version")
           PROJ_V=$(node -p "require('./services/project-service/package.json').version")
           NOTIF_V=$(node -p "require('./services/notification-service/package.json').version")
+          FRONTEND_V=$(node -p "require('./frontend/package.json').version")
 
           cat > compatibility-manifest.yml <<EOF
           releases:
@@ -514,6 +515,7 @@ jobs:
                 task-service: v${TASK_V}
                 project-service: v${PROJ_V}
                 notification-service: v${NOTIF_V}
+                frontend: v${FRONTEND_V}
               api-gateway-version: v1
           EOF
           sed -i 's/^          //' compatibility-manifest.yml
