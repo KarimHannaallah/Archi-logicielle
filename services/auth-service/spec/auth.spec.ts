@@ -291,7 +291,7 @@ describe('GET /auth/verify', () => {
         const app = buildApp();
         const res = await request(app)
             .get('/auth/verify')
-            .set('Authorization', 'Bearer faux.token.ici');
+            .set('Authorization', 'Bearer invalid.token.here');
 
         expect(res.status).toBe(401);
     });

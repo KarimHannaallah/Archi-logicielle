@@ -1,10 +1,6 @@
 {
-  "consumer": {
-    "name": "frontend"
-  },
-  "provider": {
-    "name": "auth-service"
-  },
+  "consumer": { "name": "frontend" },
+  "provider": { "name": "auth-service" },
   "interactions": [
     {
       "description": "register a new user",
@@ -12,36 +8,18 @@
       "request": {
         "method": "POST",
         "path": "/auth/register",
-        "headers": {
-          "Content-Type": "application/json"
-        },
-        "body": {
-          "email": "alice@example.com",
-          "name": "Alice",
-          "password": "secret123",
-          "consent": true
-        }
+        "headers": { "Content-Type": "application/json" },
+        "body": { "email": "alice@example.com", "name": "Alice", "password": "secret123", "consent": true }
       },
       "response": {
         "status": 201,
-        "headers": {
-          "Content-Type": "application/json; charset=utf-8"
-        },
-        "body": {
-          "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test",
-          "user": {
-            "id": "00000000-0000-0000-0000-000000000001",
-            "email": "alice@example.com",
-            "name": "Alice"
-          }
-        },
+        "headers": { "Content-Type": "application/json; charset=utf-8" },
+        "body": { "token": "some-jwt-token", "user": { "id": "00000000-0000-0000-0000-000000000001", "email": "alice@example.com", "name": "Alice" } },
         "matchingRules": {
-          "body": {
-            "$.token": { "match": "type" },
-            "$.user.id": { "match": "uuid" },
-            "$.user.email": { "match": "type" },
-            "$.user.name": { "match": "type" }
-          }
+          "$.body.token": { "match": "type" },
+          "$.body.user.id": { "match": "regex", "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" },
+          "$.body.user.email": { "match": "type" },
+          "$.body.user.name": { "match": "type" }
         }
       }
     },
@@ -51,34 +29,18 @@
       "request": {
         "method": "POST",
         "path": "/auth/login",
-        "headers": {
-          "Content-Type": "application/json"
-        },
-        "body": {
-          "email": "alice@example.com",
-          "password": "secret123"
-        }
+        "headers": { "Content-Type": "application/json" },
+        "body": { "email": "alice@example.com", "password": "secret123" }
       },
       "response": {
         "status": 200,
-        "headers": {
-          "Content-Type": "application/json; charset=utf-8"
-        },
-        "body": {
-          "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test",
-          "user": {
-            "id": "00000000-0000-0000-0000-000000000001",
-            "email": "alice@example.com",
-            "name": "Alice"
-          }
-        },
+        "headers": { "Content-Type": "application/json; charset=utf-8" },
+        "body": { "token": "some-jwt-token", "user": { "id": "00000000-0000-0000-0000-000000000001", "email": "alice@example.com", "name": "Alice" } },
         "matchingRules": {
-          "body": {
-            "$.token": { "match": "type" },
-            "$.user.id": { "match": "uuid" },
-            "$.user.email": { "match": "type" },
-            "$.user.name": { "match": "type" }
-          }
+          "$.body.token": { "match": "type" },
+          "$.body.user.id": { "match": "regex", "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" },
+          "$.body.user.email": { "match": "type" },
+          "$.body.user.name": { "match": "type" }
         }
       }
     },
@@ -88,23 +50,14 @@
       "request": {
         "method": "GET",
         "path": "/auth/verify",
-        "headers": {
-          "Authorization": "Bearer valid-token"
-        }
+        "headers": { "Authorization": "Bearer valid-token" }
       },
       "response": {
         "status": 200,
-        "headers": {
-          "Content-Type": "application/json; charset=utf-8"
-        },
-        "body": {
-          "valid": true,
-          "userId": "00000000-0000-0000-0000-000000000001"
-        },
+        "headers": { "Content-Type": "application/json; charset=utf-8" },
+        "body": { "valid": true, "userId": "00000000-0000-0000-0000-000000000001" },
         "matchingRules": {
-          "body": {
-            "$.userId": { "match": "uuid" }
-          }
+          "$.body.userId": { "match": "regex", "regex": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" }
         }
       }
     },
@@ -114,33 +67,18 @@
       "request": {
         "method": "POST",
         "path": "/auth/login",
-        "headers": {
-          "Content-Type": "application/json"
-        },
-        "body": {
-          "email": "alice@example.com",
-          "password": "wrong"
-        }
+        "headers": { "Content-Type": "application/json" },
+        "body": { "email": "alice@example.com", "password": "wrong" }
       },
       "response": {
         "status": 401,
-        "headers": {
-          "Content-Type": "application/json; charset=utf-8"
-        },
-        "body": {
-          "error": "Invalid credentials"
-        },
+        "headers": { "Content-Type": "application/json; charset=utf-8" },
+        "body": { "error": "Invalid credentials" },
         "matchingRules": {
-          "body": {
-            "$.error": { "match": "type" }
-          }
+          "$.body.error": { "match": "type" }
         }
       }
     }
   ],
-  "metadata": {
-    "pactSpecification": {
-      "version": "2.0.0"
-    }
-  }
+  "metadata": { "pactSpecification": { "version": "2.0.0" } }
 }
