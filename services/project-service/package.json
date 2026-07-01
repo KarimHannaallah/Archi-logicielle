@@ -1,6 +1,6 @@
 {
   "name": "project-service",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "main": "src/index.ts",
   "license": "MIT",
   "engines": {
