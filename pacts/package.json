@@ -28,6 +28,7 @@
   },
   "jest": {
     "rootDir": ".",
+    "modulePaths": ["<rootDir>/node_modules"],
     "transform": {
       "^.+\\.ts$": "ts-jest"
     },
