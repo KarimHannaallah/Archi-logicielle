@@ -487,8 +487,12 @@ jobs:
   # ── Étape 6 — Mise à jour du manifeste de compatibilité ────────────────────
 
   update-compatibility-manifest:
-    needs: [build-services, docker-build]
-    if: github.ref == 'refs/heads/main' && needs.build-services.result == 'success'
+    needs: [docker-build]
+    if: |
+      always() &&
+      github.ref == 'refs/heads/main' &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -505,7 +509,6 @@ jobs:
           PROJ_V=$(node -p "require('./services/project-service/package.json').version")
           NOTIF_V=$(node -p "require('./services/notification-service/package.json').version")
           FRONTEND_V=$(node -p "require('./frontend/package.json').version")
-
           cat > compatibility-manifest.yml <<EOF
           releases:
             - services:
@@ -515,7 +518,7 @@ jobs:
                 notification-service: v${NOTIF_V}
                 frontend: v${FRONTEND_V}
           EOF
-          sed -i 's/^    //' compatibility-manifest.yml
+          sed -i 's/^          //' compatibility-manifest.yml
 
       - name: Commit if changed
         run: |
