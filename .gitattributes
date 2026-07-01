@@ -11,3 +11,5 @@
 *.css text eol=lf
 *.scss text eol=lf
 *.md text eol=lf
+
+compatibility-manifest.yml merge=theirs
