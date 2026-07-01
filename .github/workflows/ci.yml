@@ -500,7 +500,6 @@ jobs:
 
       - name: Update compatibility manifest
         run: |
-          DATE=$(date +%Y-%m-%d)
           AUTH_V=$(node -p "require('./services/auth-service/package.json').version")
           TASK_V=$(node -p "require('./services/task-service/package.json').version")
           PROJ_V=$(node -p "require('./services/project-service/package.json').version")
@@ -509,16 +508,14 @@ jobs:
 
           cat > compatibility-manifest.yml <<EOF
           releases:
-            - version: "${DATE}"
-              services:
+            - services:
                 auth-service: v${AUTH_V}
                 task-service: v${TASK_V}
                 project-service: v${PROJ_V}
                 notification-service: v${NOTIF_V}
                 frontend: v${FRONTEND_V}
-              api-gateway-version: v1
           EOF
-          sed -i 's/^          //' compatibility-manifest.yml
+          sed -i 's/^    //' compatibility-manifest.yml
 
       - name: Commit if changed
         run: |
