@@ -344,7 +344,7 @@ jobs:
       always() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
-    uses: ./.github/workflows/docker-build.yml
+    uses: ./.github/workflows/docker-build.yml 
     with:
       auth-service: ${{ needs.detect-changes.outputs.auth-service }}
       task-service: ${{ needs.detect-changes.outputs.task-service }}
