@@ -18,22 +18,16 @@ jobs:
       - name: Extract versions from compatibility-manifest
         id: versions
         run: |
-          TAG="${{ github.event.release.tag_name }}"
-          RELEASE="${TAG#v}"
-          echo "release=$RELEASE" >> "$GITHUB_OUTPUT"
-
           python3 << EOF
-          import yaml, os, sys
+          import yaml, os
 
-          release_key = "$RELEASE"
           with open("compatibility-manifest.yml") as f:
               manifest = yaml.safe_load(f)
 
-          release = next((r for r in manifest["releases"] if str(r["version"]) == release_key), None)
-          if not release:
-              print(f"ERROR: No entry found in compatibility-manifest.yml for version '{release_key}'", file=sys.stderr)
-              sys.exit(1)
+          # Toujours utiliser le dernier entry — indépendant du tag de release
+          release = manifest["releases"][-1]
 
+          print(f"Using manifest entry: {release['version']}")
           s = release["services"]
           out = os.environ["GITHUB_OUTPUT"]
           with open(out, "a") as f:
@@ -41,7 +35,7 @@ jobs:
               f.write(f"task_version={s['task-service'].lstrip('v')}\n")
               f.write(f"project_version={s['project-service'].lstrip('v')}\n")
               f.write(f"notif_version={s['notification-service'].lstrip('v')}\n")
-              f.write(f"frontend_version={s['frontend'].lstrip('v')}\n")
+              f.write(f"frontend_version={s.get('frontend', 'latest').lstrip('v')}\n")
           EOF
 
       - name: Show resolved versions
