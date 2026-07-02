@@ -418,7 +418,7 @@ jobs:
 
       - name: Login to GHCR
         if: matrix.changed == 'true' && github.ref == 'refs/heads/main'
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
+        uses: docker/login-action@c99871dec2022cc055c062a10cc1a1310835ceb4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
