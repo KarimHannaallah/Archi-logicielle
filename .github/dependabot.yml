@@ -5,6 +5,7 @@ updates:
     schedule:
       interval: weekly
     target-branch: dev
+    rebase-strategy: auto
     groups:
       patch-updates:
         update-types:
@@ -15,3 +16,4 @@ updates:
     schedule:
       interval: weekly
     target-branch: dev
+    rebase-strategy: auto
