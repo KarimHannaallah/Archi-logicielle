@@ -6,9 +6,6 @@ updates:
       interval: weekly
     target-branch: dev
     rebase-strategy: auto
-    ignore:
-      - dependency-name: "uuid"
-        versions: [">=10.0.0"]
     groups:
       patch-updates:
         update-types:
